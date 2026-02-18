@@ -265,7 +265,7 @@ const NodeMarker: React.FC<NodeMarkerProps> = ({
       </mesh>
 
       {/* Outermost aura */}
-      <mesh scale={2.9}>
+      {/* <mesh scale={2.9}>
         <sphereGeometry args={[0.08, 20, 20]} />
         <shaderMaterial
           ref={aura3Ref}
@@ -276,10 +276,10 @@ const NodeMarker: React.FC<NodeMarkerProps> = ({
           side={THREE.BackSide}
           uniforms={{ uTime: { value: 0 }, uColor: { value: BASE_COL.clone() }, uHover: { value: 0 }, uRadius: { value: 0.9 } }}
         />
-      </mesh>
+      </mesh> */}
 
       {/* Middle aura */}
-      <mesh scale={1.95}>
+      {/* <mesh scale={1.95}>
         <sphereGeometry args={[0.08, 24, 24]} />
         <shaderMaterial
           ref={aura2Ref}
@@ -290,10 +290,10 @@ const NodeMarker: React.FC<NodeMarkerProps> = ({
           side={THREE.BackSide}
           uniforms={{ uTime: { value: 0 }, uColor: { value: BASE_COL.clone() }, uHover: { value: 0 }, uRadius: { value: 0.5 } }}
         />
-      </mesh>
+      </mesh> */}
 
       {/* Inner aura */}
-      <mesh scale={1.38}>
+      {/* <mesh scale={1.38}>
         <sphereGeometry args={[0.08, 28, 28]} />
         <shaderMaterial
           ref={aura1Ref}
@@ -304,10 +304,10 @@ const NodeMarker: React.FC<NodeMarkerProps> = ({
           side={THREE.BackSide}
           uniforms={{ uTime: { value: 0 }, uColor: { value: BASE_COL.clone() }, uHover: { value: 0 }, uRadius: { value: 0.2 } }}
         />
-      </mesh>
+      </mesh> */}
 
       {/* Orbital ring 1 — tight + fast */}
-      <primitive object={ring1} ref={ring1Ref} quaternion={ringQuat}>
+      {/* <primitive object={ring1} ref={ring1Ref} quaternion={ringQuat}>
         <shaderMaterial
           ref={ring1MatRef}
           vertexShader={ringVertexShader}
@@ -316,7 +316,7 @@ const NodeMarker: React.FC<NodeMarkerProps> = ({
           blending={THREE.AdditiveBlending}
           uniforms={{ uTime: { value: 0 }, uSpeed: { value: 2.6 }, uColor: { value: new THREE.Color('#00ffff') }, uHover: { value: 0 } }}
         />
-      </primitive>
+      </primitive> */}
 
       {/* Orbital ring 2 — wide, tilted, opposite direction */}
       <primitive object={ring2} ref={ring2Ref} quaternion={ring2Quat}>

@@ -35,7 +35,7 @@ export const UIOverlay: React.FC = () => {
         </div>
 
         {/* Status indicators */}
-        <div className="flex gap-3">
+        {/* <div className="flex gap-3">
           <div className="bg-slate-900/90 border border-slate-700/50 rounded-md px-3 py-1.5 text-xs text-cyan-400 font-mono backdrop-blur-sm">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
@@ -45,7 +45,7 @@ export const UIOverlay: React.FC = () => {
           <div className="bg-slate-900/90 border border-slate-700/50 rounded-md px-3 py-1.5 text-xs text-emerald-400 font-mono backdrop-blur-sm">
             SYS: NOMINAL
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Footer */}
@@ -56,8 +56,8 @@ export const UIOverlay: React.FC = () => {
             {view === 'SURFACE' ? (
               <>
                 <span className="text-cyan-400 font-semibold">Surface Operations Active.</span>{' '}
-                Monitor facility structures and their real-time telemetry data. Tap on
-                structures to inspect detailed metrics.
+                {/* Monitor facility structures and their real-time telemetry data. Tap on
+                structures to inspect detailed metrics. */}
               </>
             ) : (
               <>
