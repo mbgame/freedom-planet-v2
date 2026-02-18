@@ -99,6 +99,8 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
           position={[0, data.position[1], 0]}
           onClick={(e) => {
             e.stopPropagation();
+            // Focus camera on this structure
+            useGameStore.getState().setFocusedStructure(data.id);
             // Toggle selection or select new
             if (isSelected) {
               setSelectedStructure(null);

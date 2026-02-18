@@ -53,12 +53,15 @@ export const CameraRig: React.FC = () => {
     };
   }, [gl, view]);
 
+  const targetPosition = useRef(new THREE.Vector3());
+  const targetLookAt = useRef(new THREE.Vector3());
+
   useFrame(({ clock }, delta) => {
-    // Increased lerp speed for better responsiveness (was 2.5)
+    // Standard lerp speed for camera movement
     const lerpSpeed = 6.0 * delta;
 
     if (view === 'TRANSITION' && selectedNode) {
-      // Zoom to selected node
+      // Zoom to selected node from orbit
       const targetPos = selectedNode.position.clone().multiplyScalar(1.3);
       camera.position.lerp(targetPos, lerpSpeed);
       camera.lookAt(selectedNode.position);
@@ -68,46 +71,42 @@ export const CameraRig: React.FC = () => {
         enterSurface();
       }
     } else if (view === 'SURFACE' && selectedNode) {
-      // Surface view camera position - focus on current structure
       const state = useGameStore.getState();
       const focusedIndex = state.focusedStructureIndex;
       const navOffset = state.navigationOffset;
       const currentStructure = selectedNode.structures[focusedIndex] || selectedNode.structures[0];
 
-      // Dynamic offset with smooth "sway" motion
       const time = clock.getElapsedTime();
 
-      // Horizontal sway (left and right)
-      const swayAmount = Math.sin(time * 0.4) * 0.8;
-      // Depth breathing
-      const depthBreathing = Math.cos(time * 0.3) * 0.2;
-
-      const xOffset = 6 + swayAmount + navOffset;
+      // Calculate the specific ideal camera position for this structure
+      // We use a fixed offset relative to the structure's ground position
+      const xOffset = 6 + Math.sin(time * 0.4) * 0.8 + navOffset;
       const yOffset = 1.8 + Math.sin(time * 0.2) * 0.1;
-      const zOffset = 6 + depthBreathing;
+      const zOffset = 6 + Math.cos(time * 0.3) * 0.2;
 
-      const targetPos = new THREE.Vector3(
+      targetPosition.current.set(
         currentStructure.position[0] + xOffset,
         currentStructure.position[1] + yOffset,
         currentStructure.position[2] + zOffset
       );
 
-      // Smoothly interpolate to new position
-      camera.position.lerp(targetPos, lerpSpeed);
-
-      // Focus point on the structure (slightly offset up)
-      const lookAtTarget = new THREE.Vector3(
+      // Calculate the focus point (slightly above the structure)
+      targetLookAt.current.set(
         currentStructure.position[0],
         currentStructure.position[1] + 0.6,
         currentStructure.position[2]
       );
 
-      // Create or update a persistent look-at target for smoother focus transitions
-      if (!camera.userData.lookAtPos) {
-        camera.userData.lookAtPos = lookAtTarget.clone();
+      // Smoothly move camera towards target plane
+      camera.position.lerp(targetPosition.current, lerpSpeed);
+
+      // Smoothly rotate camera towards structure
+      // We maintain a persistent look-at property to bridge structure changes
+      if (!camera.userData.currentLookAt) {
+        camera.userData.currentLookAt = targetLookAt.current.clone();
       }
-      camera.userData.lookAtPos.lerp(lookAtTarget, lerpSpeed);
-      camera.lookAt(camera.userData.lookAtPos);
+      camera.userData.currentLookAt.lerp(targetLookAt.current, lerpSpeed);
+      camera.lookAt(camera.userData.currentLookAt);
     }
     else if (view === 'ORBIT') {
       // Orbital view with subtle camera drift

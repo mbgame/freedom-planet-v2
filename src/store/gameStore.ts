@@ -53,6 +53,7 @@ interface GameState {
   setSelectedStructure: (structure: StructureData | null) => void;
   setLoading: (loading: boolean, progress?: number) => void;
   updateStructureStats: (structureId: string, stats: StructureStat[]) => void;
+  setFocusedStructure: (structureId: string) => void;
 }
 
 // Sample data - in production this would come from an API
@@ -229,5 +230,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       )
     }));
     set({ nodes });
+  },
+
+  setFocusedStructure: (structureId) => {
+    const { selectedNode } = get();
+    if (!selectedNode) return;
+    const index = selectedNode.structures.findIndex(s => s.id === structureId);
+    if (index !== -1) {
+      set({ focusedStructureIndex: index });
+    }
   }
 }));
