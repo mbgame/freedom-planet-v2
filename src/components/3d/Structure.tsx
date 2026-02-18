@@ -44,23 +44,41 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
   const isFocused = selectedNode?.structures[focusedStructureIndex]?.id === data.id;
   const isSelected = selectedStructure?.id === data.id;
   const ringRef = useRef<THREE.Mesh>(null);
-  const groupRef = useRef<THREE.Group>(null);
-  const floatOffset = useRef(Math.random() * Math.PI * 2);
+  const glowRef = useRef<THREE.Mesh>(null);
+  const structureGroupRef = useRef<THREE.Group>(null);
+  const animatedY = useRef(data.position[1]);
 
-  // Floating animation
-  // useFrame(({ clock }) => {
-  //   if (groupRef.current) {
-  //     const time = clock.elapsedTime * 2 + floatOffset.current;
-  //     groupRef.current.position.y = data.position[1] + Math.sin(time) * 0.05;
-  //     groupRef.current.rotation.x = Math.sin(time / 2) * 0.03;
-  //     groupRef.current.rotation.z = Math.sin(time / 3) * 0.03;
-  //   }
+  // Animation logic
+  useFrame(({ clock }, delta) => {
+    // 1. Lift Animation (Smooth transition when selected)
+    const targetY = isSelected ? data.position[1] + 0.4 : data.position[1];
+    animatedY.current = THREE.MathUtils.lerp(animatedY.current, targetY, delta * 4);
 
-  //   // Rotate selection ring if it exists
-  //   if (ringRef.current) {
-  //     ringRef.current.rotation.z += 0.01;
-  //   }
-  // });
+    // Apply animations to structure group
+    if (structureGroupRef.current) {
+      structureGroupRef.current.position.y = animatedY.current;
+    }
+
+
+    // 3. Selection Ring & Glow Animation
+    if (ringRef.current) {
+      // Rotation
+      ringRef.current.rotation.z += delta * 1.5;
+      // Pulse Opacity
+      const pulse = 0.4 + Math.sin(clock.elapsedTime * 6) * 0.15;
+      (ringRef.current.material as THREE.MeshBasicMaterial).opacity = pulse;
+    }
+
+    if (glowRef.current) {
+      // Pulse Opacity
+      const pulse = 0.15 + Math.sin(clock.elapsedTime * 6) * 0.08;
+      (glowRef.current.material as THREE.MeshBasicMaterial).opacity = pulse;
+      // Pulse Scale slightly
+      const glowScale = 1 + Math.sin(clock.elapsedTime * 6) * 0.05;
+      glowRef.current.scale.set(glowScale, glowScale, 1);
+    }
+  });
+
 
   return (
     <group position={[data.position[0], 0, data.position[2]]}>
@@ -83,7 +101,11 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
 
       {/* Secondary ground glow for selection */}
       {isSelected && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
+        <mesh
+          ref={glowRef}
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, 0.04, 0]}
+        >
           <circleGeometry args={[1.5, 32]} />
           <meshBasicMaterial
             color="#00ffff"
@@ -93,10 +115,11 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
         </mesh>
       )}
 
-      <group ref={groupRef}>
-        {/* Main structure mesh */}
+      {/* Main structure group (Animated) */}
+      <group ref={structureGroupRef}>
+        {/* Main structure mesh and logo */}
         <group
-          position={[0, data.position[1], 0]}
+          position={[0, 0, 0]} // animatedY handles the lift
           onClick={(e) => {
             e.stopPropagation();
             // Focus camera on this structure
@@ -111,7 +134,7 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
         >
           {/* 3D Structure Logo - Now nested directly to follow model position/rotation */}
           <Text
-            position={[0, 0, 0.75]} // Positioned above the model center
+            position={[0, -0.05, 0.75]} // Positioned above the model center
             rotation={[-Math.PI / 8, 0, 0]}
             fontSize={0.15}
             color="#ffffff"
@@ -134,27 +157,28 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
           </Suspense>
         </group>
 
-        {/* Base platform */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
-          <circleGeometry args={[0.9, 32]} />
-          <meshStandardMaterial
-            color="#0f172a"
-            transparent
-            opacity={0.7}
-            roughness={0.8}
-            metalness={0.2}
-          />
-        </mesh>
-
-        {/* 3D Data Label - Always visible, but stats only show when focused */}
+        {/* 3D Data Label - Inside the animated group to follow movement */}
         <DataLabel
-          position={new THREE.Vector3(0, data.position[1], 0)}
+          position={new THREE.Vector3(0, 0, 0)} // Position relative to structureGroupRef center
           stats={data.stats}
           structureName={data.type}
           isFocused={isFocused}
           isSelected={isSelected}
         />
       </group>
+
+      {/* Base platform - stays static on the ground */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
+        <circleGeometry args={[0.9, 32]} />
+        <meshStandardMaterial
+          color="#0f172a"
+          transparent
+          opacity={0.7}
+          roughness={0.8}
+          metalness={0.2}
+        />
+      </mesh>
+
     </group>
   );
 };
