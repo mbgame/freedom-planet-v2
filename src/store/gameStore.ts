@@ -189,13 +189,17 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   enterSurface: () => set({ view: 'SURFACE', isTransitioning: false }),
 
-  exitSurface: () => set({
-    view: 'ORBIT',
-    selectedNode: null,
-    selectedStructure: null,
-    focusedStructureIndex: 0,
-    isTransitioning: true
-  }),
+  exitSurface: () => {
+    set({
+      view: 'ORBIT',
+      selectedNode: null,
+      selectedStructure: null,
+      focusedStructureIndex: 0,
+      isTransitioning: true
+    });
+    // Reset transition state after orbit return
+    setTimeout(() => set({ isTransitioning: false }), 1500);
+  },
 
   nextStructure: () => {
     const { selectedNode, focusedStructureIndex } = get();

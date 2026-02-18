@@ -4,6 +4,7 @@ import { StarField } from './SurfaceScene';
 import { Planet } from './Planet';
 import { Nodes } from './Nodes';
 import { SurfaceScene } from './SurfaceScene';
+import { TransitionVFX } from './TransitionVFX';
 import { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -66,6 +67,8 @@ export const SceneManager: React.FC = () => {
       ) : (
         <SurfaceScene />
       )}
+
+      <TransitionVFX />
     </>
   );
 };
