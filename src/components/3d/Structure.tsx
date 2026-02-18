@@ -132,22 +132,61 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
             }
           }}
         >
-          {/* 3D Structure Logo - Now nested directly to follow model position/rotation */}
-          <Text
-            position={[0, -0.05, 0.75]} // Positioned above the model center
-            rotation={[-Math.PI / 8, 0, 0]}
-            fontSize={0.15}
-            color="#ffffff"
-            anchorX="center"
-            anchorY="middle"
-            fontWeight={900}
-            letterSpacing={0.15}
-            outlineWidth={0.02}
-            outlineColor="#000000"
-          >
-            {data.type}
-            <meshBasicMaterial color="#00ffff" toneMapped={false} />
-          </Text>
+          {/* 3D Structure Logo - Split by space to color second word green */}
+          {(() => {
+            // const words = data.type.split(' ');
+            // if (words.length > 1) {
+            //   const firstWord = words[0];
+            //   const secondWord = words.slice(1).join(' ');
+            //   return (
+            //     <group position={[0, -0.05, 0.75]} rotation={[-Math.PI / 8, 0, 0]}>
+            //       <Text
+            //         position={[-0.05, 0, 0]}
+            //         fontSize={0.15}
+            //         anchorX="right"
+            //         anchorY="middle"
+            //         fontWeight={900}
+            //         letterSpacing={0.15}
+            //         outlineWidth={0.02}
+            //         outlineColor="#000000"
+            //       >
+            //         {firstWord}
+            //         <meshBasicMaterial color="#ffffff" toneMapped={false} />
+            //       </Text>
+            //       <Text
+            //         position={[0.05, 0, 0]}
+            //         fontSize={0.15}
+            //         anchorX="left"
+            //         anchorY="middle"
+            //         fontWeight={900}
+            //         letterSpacing={0.15}
+            //         outlineWidth={0.02}
+            //         outlineColor="#000000"
+            //       >
+            //         {secondWord}
+            //         <meshBasicMaterial color="#00ff41" toneMapped={false} />
+            //       </Text>
+            //     </group>
+            //   );
+            // }
+            return (
+              <Text
+                position={[0, -0.05, data.type === 'Polymer Plants' ? 0.35 : 0.75]} // Positioned above the model center
+                rotation={[-Math.PI / 8, 0, 0]}
+                fontSize={0.15}
+                color="#ffffff"
+                anchorX="center"
+                anchorY="middle"
+                fontWeight={900}
+                letterSpacing={0.15}
+                outlineWidth={0.02}
+                outlineColor="#000000"
+              >
+                {data.type}
+                <meshBasicMaterial color="#00ffff" toneMapped={false} />
+              </Text>
+            );
+          })()}
 
           {/* Different geometries based on type */}
           <Suspense fallback={<ModelFallback />}>

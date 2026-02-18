@@ -133,7 +133,7 @@ export const SurfaceScene: React.FC = () => {
       ))}
 
       {/* Ambient particles/stars in background */}
-      {/* <StarField count={500} /> */}
+      <StarField count={500} />
 
       {/* Additional ambient lighting for surface */}
       <ambientLight intensity={2} color="#ffffff" />

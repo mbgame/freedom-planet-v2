@@ -55,7 +55,7 @@ export const UIOverlay: React.FC = () => {
           <p className="text-slate-300 text-sm leading-relaxed">
             {view === 'SURFACE' ? (
               <>
-                <span className="text-cyan-400 font-semibold">Surface Operations Active.</span>{' '}
+                {/* <span className="text-cyan-400 font-semibold">Surface Operations Active.</span>{' '} */}
                 {/* Monitor facility structures and their real-time telemetry data. Tap on
                 structures to inspect detailed metrics. */}
               </>
