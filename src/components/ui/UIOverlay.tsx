@@ -4,6 +4,9 @@ import { useGameStore } from '@/store/gameStore';
 export const UIOverlay: React.FC = () => {
   const view = useGameStore(state => state.view);
   const exitSurface = useGameStore(state => state.exitSurface);
+  const exitMoon = useGameStore(state => state.exitMoon);
+  const moons = useGameStore(state => state.moons);
+  const focusMoon = useGameStore(state => state.focusMoon);
   const isTransitioning = useGameStore(state => state.isTransitioning);
   const [showTransition, setShowTransition] = useState(false);
 
@@ -46,6 +49,33 @@ export const UIOverlay: React.FC = () => {
             SYS: NOMINAL
           </div>
         </div> */}
+
+        {/* Moon Selection UI */}
+        {view === 'ORBIT' && (
+          <div className="flex flex-col gap-2 pointer-events-auto">
+            <div className="text-[10px] text-cyan-400/80 uppercase tracking-[0.2em] text-right mb-1">
+              Select Moons
+            </div>
+            {moons.map((moon) => (
+              <button
+                key={moon.id}
+                onClick={() => focusMoon(moon)}
+                className="group flex items-center justify-end gap-3 px-3 py-2 bg-slate-900/60 border border-slate-700/50 rounded-md backdrop-blur-md transition-all hover:bg-cyan-900/30 hover:border-cyan-500/50"
+              >
+                <span className="text-xs text-slate-300 font-mono capitalize group-hover:text-cyan-300">
+                  {moon.id.replace('moon-', '')}
+                </span>
+                <div
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{
+                    backgroundColor: moon.color,
+                    boxShadow: `0 0 6px ${moon.color}`
+                  }}
+                />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Footer */}
@@ -59,6 +89,11 @@ export const UIOverlay: React.FC = () => {
                 {/* Monitor facility structures and their real-time telemetry data. Tap on
                 structures to inspect detailed metrics. */}
               </>
+            ) : view === 'MOON' ? (
+              <>
+                <span className="text-cyan-400 font-semibold">Lunar Analysis Active.</span>{' '}
+                Scanning surface composition and orbital trajectory.
+              </>
             ) : (
               <>
                 <span className="text-cyan-400 font-semibold">Orbital Scan Mode.</span>{' '}
@@ -70,9 +105,9 @@ export const UIOverlay: React.FC = () => {
         </div>
 
         {/* Return button */}
-        {view === 'SURFACE' && (
+        {(view === 'SURFACE' || view === 'MOON') && (
           <button
-            onClick={exitSurface}
+            onClick={view === 'SURFACE' ? exitSurface : exitMoon}
             className="group relative px-8 py-3 bg-slate-800/90 text-cyan-400 text-sm font-bold uppercase tracking-wider border border-cyan-500/30 rounded-md backdrop-blur-sm transition-all hover:bg-cyan-900/30 hover:border-cyan-400/50 hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]"
           >
             <span className="relative z-10 flex items-center gap-2">

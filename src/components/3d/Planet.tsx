@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
-import { useGameStore } from '@/store/gameStore';
+import { useGameStore, MoonData } from '@/store/gameStore';
 
 // Fixed atmosphere shader
 const atmosphereVertexShader = `
@@ -83,9 +83,63 @@ export const CloudLayer: React.FC = () => {
     );
 };
 
+
+const Moon: React.FC<{ data: MoonData }> = ({ data }) => {
+    const meshRef = useRef<THREE.Mesh>(null);
+    const focusMoon = useGameStore(state => state.focusMoon);
+    const view = useGameStore(state => state.view);
+
+    const [colorMap, normalMap, displacementMap] = useTexture([
+        '/textures/Moon_002_basecolor.png',
+        '/textures/Moon_002_normal.png',
+        '/textures/Moon_002_height.png'
+    ]);
+
+    useFrame(({ clock }) => {
+        if (meshRef.current) {
+            // Simple orbit animation
+            const t = clock.getElapsedTime() * data.speed + data.angle;
+            meshRef.current.position.x = Math.cos(t) * data.distance;
+            meshRef.current.position.z = Math.sin(t) * data.distance;
+
+            // Self rotation
+            meshRef.current.rotation.y += 0.005;
+        }
+    });
+
+    return (
+        <mesh
+            ref={meshRef}
+            scale={data.size}
+            onClick={(e) => {
+                if (view === 'ORBIT') {
+                    e.stopPropagation();
+                    focusMoon(data);
+                }
+            }}
+            onPointerOver={() => {
+                if (view === 'ORBIT') document.body.style.cursor = 'pointer';
+            }}
+            onPointerOut={() => document.body.style.cursor = 'auto'}
+        >
+            <sphereGeometry args={[1, 64, 64]} />
+            <meshStandardMaterial
+                map={colorMap}
+                normalMap={normalMap}
+                displacementMap={displacementMap}
+                displacementScale={0.05}
+                color={data.color}
+                roughness={0.8}
+                metalness={0.1}
+            />
+        </mesh>
+    );
+};
+
 export const Planet: React.FC = () => {
     const meshRef = useRef<THREE.Mesh>(null);
     const view = useGameStore(state => state.view);
+    const moons = useGameStore(state => state.moons);
 
     // Load textures
     const [colorMap, normalMap, specularMap] = useTexture([
@@ -128,6 +182,11 @@ export const Planet: React.FC = () => {
                     opacity={0.04}
                 />
             </mesh>
+
+            {/* Moons */}
+            {moons.map(moon => (
+                <Moon key={moon.id} data={moon} />
+            ))}
 
             {/* Cloud layer */}
             <CloudLayer />

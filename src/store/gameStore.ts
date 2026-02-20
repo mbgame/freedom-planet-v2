@@ -1,7 +1,17 @@
 import { create } from 'zustand';
 import * as THREE from 'three';
 
-export type ViewState = 'ORBIT' | 'TRANSITION' | 'SURFACE';
+export type ViewState = 'ORBIT' | 'TRANSITION' | 'SURFACE' | 'MOON';
+
+export interface MoonData {
+  id: string;
+  size: number;
+  distance: number;
+  speed: number;
+  angle: number;
+  color: string;
+  description: string;
+}
 
 export interface StructureStat {
   label: string;
@@ -30,9 +40,11 @@ interface GameState {
   // Selection state
   selectedNode: NodeData | null;
   selectedStructure: StructureData | null;
+  selectedMoon: MoonData | null;
 
   // Data
   nodes: NodeData[];
+  moons: MoonData[];
 
   // Loading
   isLoading: boolean;
@@ -54,6 +66,8 @@ interface GameState {
   setLoading: (loading: boolean, progress?: number) => void;
   updateStructureStats: (structureId: string, stats: StructureStat[]) => void;
   setFocusedStructure: (structureId: string) => void;
+  focusMoon: (moon: MoonData) => void;
+  exitMoon: () => void;
 }
 
 // Sample data - in production this would come from an API
@@ -145,6 +159,38 @@ const generateNodes = (): NodeData[] => {
   return nodes;
 };
 
+const generateMoons = (): MoonData[] => {
+  return [
+    {
+      id: 'moon-phobos',
+      size: 0.25,
+      distance: 3.8,
+      speed: 0.3,
+      angle: 0,
+      color: '#b0b0b0',
+      description: 'A cratered rock captured by gravity.'
+    },
+    {
+      id: 'moon-deimos',
+      size: 0.18,
+      distance: 5.2,
+      speed: 0.2,
+      angle: 2.1,
+      color: '#908070',
+      description: 'Small and irregular, rich in carbon.'
+    },
+    {
+      id: 'moon-triton',
+      size: 0.35,
+      distance: 7.5,
+      speed: 0.1,
+      angle: 4.2,
+      color: '#aaddff',
+      description: 'A captured Kuiper belt object.'
+    }
+  ];
+};
+
 const generateStatsForType = (type: string): StructureStat[] => {
   switch (type) {
     case 'Aeroponic Farms':
@@ -177,6 +223,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   focusedStructureIndex: 0,
   navigationOffset: 0,
   nodes: generateNodes(),
+  moons: generateMoons(),
+  selectedMoon: null,
   isLoading: true,
   loadingProgress: 0,
 
@@ -239,5 +287,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (index !== -1) {
       set({ focusedStructureIndex: index });
     }
+  },
+
+  focusMoon: (moon) => {
+    set({ selectedMoon: moon, view: 'MOON', isTransitioning: true });
+    setTimeout(() => set({ isTransitioning: false }), 1000);
+  },
+
+  exitMoon: () => {
+    set({ view: 'ORBIT', selectedMoon: null, isTransitioning: true });
+    setTimeout(() => set({ isTransitioning: false }), 1000);
   }
 }));

@@ -4,9 +4,10 @@ import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
 
 export const CameraRig: React.FC = () => {
-  const { camera, gl } = useThree();
+  const { camera, gl, size } = useThree();
   const view = useGameStore(state => state.view);
   const selectedNode = useGameStore(state => state.selectedNode);
+  const selectedMoon = useGameStore(state => state.selectedMoon);
   const enterSurface = useGameStore(state => state.enterSurface);
 
   const isDragging = useRef(false);
@@ -108,6 +109,26 @@ export const CameraRig: React.FC = () => {
       camera.userData.currentLookAt.lerp(targetLookAt.current, lerpSpeed);
       camera.lookAt(camera.userData.currentLookAt);
     }
+    else if (view === 'MOON' && selectedMoon) {
+      // Calculate moon position based on current time (same math as in Moon component)
+      const time = clock.getElapsedTime();
+      const t = time * selectedMoon.speed + selectedMoon.angle;
+
+      const moonX = Math.cos(t) * selectedMoon.distance;
+      const moonZ = Math.sin(t) * selectedMoon.distance;
+
+      const moonPos = new THREE.Vector3(moonX, 0, moonZ);
+
+      // Target position is offset from moon towards planet slightly, or just outside moon
+      // Let's position camera to look at moon from "outside"
+      const offset = new THREE.Vector3(moonX, 0, moonZ).normalize().multiplyScalar(selectedMoon.size * 4); // Distance from center of moon
+
+      const targetPos = moonPos.clone().add(offset);
+      targetPos.y = 0.5; // Slight elevation
+
+      camera.position.lerp(targetPos, lerpSpeed);
+      camera.lookAt(moonPos);
+    }
     else if (view === 'ORBIT') {
       // Orbital view with subtle camera drift
       const time = clock.elapsedTime;
@@ -118,7 +139,10 @@ export const CameraRig: React.FC = () => {
         driftOffset.current.phi = Math.sin(time * 0.07) * 0.02;
       }
 
-      const radius = 8;
+      // Adjust camera distance for mobile (portrait mode) to fit moons in screen
+      const isPortrait = size.width < size.height;
+      const radius = isPortrait ? 13 : 10;
+
       const finalTheta = orbitAngle.current.theta + driftOffset.current.theta;
       const finalPhi = orbitAngle.current.phi + driftOffset.current.phi;
 
