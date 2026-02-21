@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from 'react';
+'use client';import { useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import { useGameStore } from '@/store/gameStore';

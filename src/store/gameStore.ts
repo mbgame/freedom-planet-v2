@@ -68,6 +68,8 @@ interface GameState {
   setFocusedStructure: (structureId: string) => void;
   focusMoon: (moon: MoonData) => void;
   exitMoon: () => void;
+  nextMoon: () => void;
+  prevMoon: () => void;
 }
 
 // Sample data - in production this would come from an API
@@ -296,6 +298,24 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   exitMoon: () => {
     set({ view: 'ORBIT', selectedMoon: null, isTransitioning: true });
+    setTimeout(() => set({ isTransitioning: false }), 1000);
+  },
+
+  nextMoon: () => {
+    const { selectedMoon, moons } = get();
+    if (!selectedMoon || moons.length === 0) return;
+    const index = moons.findIndex(m => m.id === selectedMoon.id);
+    const nextIndex = (index + 1) % moons.length;
+    set({ selectedMoon: moons[nextIndex], view: 'MOON', isTransitioning: true });
+    setTimeout(() => set({ isTransitioning: false }), 1000);
+  },
+
+  prevMoon: () => {
+    const { selectedMoon, moons } = get();
+    if (!selectedMoon || moons.length === 0) return;
+    const index = moons.findIndex(m => m.id === selectedMoon.id);
+    const prevIndex = (index - 1 + moons.length) % moons.length;
+    set({ selectedMoon: moons[prevIndex], view: 'MOON', isTransitioning: true });
     setTimeout(() => set({ isTransitioning: false }), 1000);
   }
 }));

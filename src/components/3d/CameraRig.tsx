@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+'use client';import { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
@@ -9,10 +9,14 @@ export const CameraRig: React.FC = () => {
   const selectedNode = useGameStore(state => state.selectedNode);
   const selectedMoon = useGameStore(state => state.selectedMoon);
   const enterSurface = useGameStore(state => state.enterSurface);
+  const nextMoon = useGameStore(state => state.nextMoon);
+  const prevMoon = useGameStore(state => state.prevMoon);
 
   const isDragging = useRef(false);
+  const startTouchX = useRef(0);
   const previousMouse = useRef({ x: 0, y: 0 });
   const orbitAngle = useRef({ theta: 0, phi: Math.PI / 2.5 });
+  const moonOrbitAngle = useRef({ theta: 0, phi: 0 });
   const driftOffset = useRef({ theta: 0, phi: 0 });
 
   // Mouse/touch controls for orbit view
@@ -21,24 +25,40 @@ export const CameraRig: React.FC = () => {
 
     const onDown = (e: PointerEvent) => {
       isDragging.current = true;
+      startTouchX.current = e.clientX;
       previousMouse.current = { x: e.clientX, y: e.clientY };
     };
 
-    const onUp = () => {
+    const onUp = (e: PointerEvent) => {
+      if (isDragging.current && view === 'MOON') {
+        const diff = startTouchX.current - e.clientX;
+        if (Math.abs(diff) > 50) {
+          if (diff > 0) nextMoon();
+          else prevMoon();
+        }
+      }
       isDragging.current = false;
     };
 
     const onMove = (e: PointerEvent) => {
-      if (!isDragging.current || view !== 'ORBIT') return;
+      if (!isDragging.current) return;
 
       const deltaX = e.clientX - previousMouse.current.x;
       const deltaY = e.clientY - previousMouse.current.y;
 
-      orbitAngle.current.theta -= deltaX * 0.005;
-      orbitAngle.current.phi -= deltaY * 0.005;
+      if (view === 'ORBIT') {
+        orbitAngle.current.theta -= deltaX * 0.005;
+        orbitAngle.current.phi -= deltaY * 0.005;
+        // Clamp phi to prevent flipping
+        orbitAngle.current.phi = Math.max(0.1, Math.min(Math.PI - 0.1, orbitAngle.current.phi));
+      } else if (view === 'MOON') {
+        moonOrbitAngle.current.theta -= deltaX * 0.005;
+        moonOrbitAngle.current.phi -= deltaY * 0.005;
 
-      // Clamp phi to prevent flipping
-      orbitAngle.current.phi = Math.max(0.1, Math.min(Math.PI - 0.1, orbitAngle.current.phi));
+        // Limitation: Horizontal rotation ±60 degrees, Vertical ±30 degrees
+        moonOrbitAngle.current.theta = Math.max(-1.1, Math.min(1.1, moonOrbitAngle.current.theta));
+        moonOrbitAngle.current.phi = Math.max(-0.6, Math.min(0.6, moonOrbitAngle.current.phi));
+      }
 
       previousMouse.current = { x: e.clientX, y: e.clientY };
     };
@@ -52,7 +72,12 @@ export const CameraRig: React.FC = () => {
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointermove', onMove);
     };
-  }, [gl, view]);
+  }, [gl, view, nextMoon, prevMoon]);
+
+  // Reset moon rotation when switching moons
+  useEffect(() => {
+    moonOrbitAngle.current = { theta: 0, phi: 0 };
+  }, [selectedMoon?.id]);
 
   const targetPosition = useRef(new THREE.Vector3());
   const targetLookAt = useRef(new THREE.Vector3());
@@ -110,21 +135,34 @@ export const CameraRig: React.FC = () => {
       camera.lookAt(camera.userData.currentLookAt);
     }
     else if (view === 'MOON' && selectedMoon) {
-      // Calculate moon position based on current time (same math as in Moon component)
       const time = clock.getElapsedTime();
       const t = time * selectedMoon.speed + selectedMoon.angle;
 
       const moonX = Math.cos(t) * selectedMoon.distance;
       const moonZ = Math.sin(t) * selectedMoon.distance;
-
       const moonPos = new THREE.Vector3(moonX, 0, moonZ);
 
-      // Target position is offset from moon towards planet slightly, or just outside moon
-      // Let's position camera to look at moon from "outside"
-      const offset = new THREE.Vector3(moonX, 0, moonZ).normalize().multiplyScalar(selectedMoon.size * 4); // Distance from center of moon
+      // Camera distance from moon surface
+      const distance = selectedMoon.size * 5;
+
+      // Base orientation (looking from "outside" towards the planet)
+      // We calculate a vector that points away from the planet through the moon
+      const radialDir = new THREE.Vector3(moonX, 0, moonZ).normalize();
+
+      // Right vector (tangent to orbit)
+      const tangentDir = new THREE.Vector3(-Math.sin(t), 0, Math.cos(t));
+
+      // Calculation of rotated camera position relative to moon
+      // Using moonOrbitAngle as local spherical coordinates relative to the radial line
+      const theta = moonOrbitAngle.current.theta;
+      const phi = moonOrbitAngle.current.phi;
+
+      // Position offset: radial + tangent + vertical
+      const offset = radialDir.clone().multiplyScalar(Math.cos(phi) * Math.cos(theta) * distance)
+        .add(tangentDir.clone().multiplyScalar(Math.cos(phi) * Math.sin(theta) * distance))
+        .add(new THREE.Vector3(0, Math.sin(phi) * distance, 0));
 
       const targetPos = moonPos.clone().add(offset);
-      targetPos.y = 0.5; // Slight elevation
 
       camera.position.lerp(targetPos, lerpSpeed);
       camera.lookAt(moonPos);

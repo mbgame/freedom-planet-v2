@@ -1,8 +1,24 @@
+'use client';
+
 import { useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
+import { useControls } from 'leva';
 import * as THREE from 'three';
 import { useGameStore, MoonData } from '@/store/gameStore';
+
+const SHOW_CONTROLS = process.env.NEXT_PUBLIC_SHOW_CONTROLS === 'true';
+
+const DEFAULT_PLANET_VALUES = {
+    bumpScale: 0.0,
+    displacementScale: 0.0,
+    displacementBias: -0.04,
+    roughness: 0.6,
+    metalness: 0.2,
+    emissiveIntensity: 0.0,
+    emissiveColor: '#1a1a2e',
+    normalScale: 0.7,
+};
 
 // Fixed atmosphere shader
 const atmosphereVertexShader = `
@@ -12,7 +28,7 @@ const atmosphereVertexShader = `
   void main() {
     vec3 vNormal = normalize(normalMatrix * normal);
     vec3 vNormel = normalize(normalMatrix * viewVector);
-    intensity = pow(0.7 - dot(vNormal, vNormel), 3.0);
+    intensity = pow(max(0.0, 0.7 - dot(vNormal, vNormel)), 3.0);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
@@ -60,7 +76,7 @@ export const Atmosphere: React.FC = () => {
 // Cloud layer component
 export const CloudLayer: React.FC = () => {
     const meshRef = useRef<THREE.Mesh>(null);
-    const cloudMap = useTexture('/textures/clouds.jpg');
+    const cloudMap = useTexture('/textures/planet/clouds.jpg');
 
     useFrame((_, delta) => {
         if (meshRef.current) {
@@ -84,15 +100,24 @@ export const CloudLayer: React.FC = () => {
 };
 
 
-const Moon: React.FC<{ data: MoonData }> = ({ data }) => {
+const Moon: React.FC<{ data: MoonData; index: number; controls: any }> = ({ data, index, controls }) => {
     const meshRef = useRef<THREE.Mesh>(null);
     const focusMoon = useGameStore(state => state.focusMoon);
     const view = useGameStore(state => state.view);
 
+    // Determine texture paths based on moon index
+    const moonFolder = index === 0 ? 'Moon_001_Textures' : index === 1 ? 'Moon_002_Textures' : 'Moon_003_Textures';
+    const moonPrefix = index === 0 ? 'Moon_001_' : index === 1 ? 'Moon_002_' : 'Moon_003_';
+    const moonSuffix = '_2048x1024';
+
+    const albedoName = `${moonPrefix}Albedo${moonSuffix}.png`;
+    const normalName = `${moonPrefix}Normal${moonSuffix}.png`;
+    const displacementName = `${moonPrefix}Displacement${moonSuffix}.png`;
+
     const [colorMap, normalMap, displacementMap] = useTexture([
-        '/textures/Moon_002_basecolor.png',
-        '/textures/Moon_002_normal.png',
-        '/textures/Moon_002_height.png'
+        `/textures/moons/${moonFolder}/${albedoName}`,
+        `/textures/moons/${moonFolder}/${normalName}`,
+        `/textures/moons/${moonFolder}/${displacementName}`
     ]);
 
     useFrame(({ clock }) => {
@@ -122,15 +147,21 @@ const Moon: React.FC<{ data: MoonData }> = ({ data }) => {
             }}
             onPointerOut={() => document.body.style.cursor = 'auto'}
         >
-            <sphereGeometry args={[1, 64, 64]} />
+            <sphereGeometry args={[1, 128, 128]} />
             <meshStandardMaterial
                 map={colorMap}
                 normalMap={normalMap}
+                normalScale={new THREE.Vector2(controls.normalScale, controls.normalScale)}
+                // bumpMap={displacementMap}
+                // bumpScale={controls.bumpScale}
                 displacementMap={displacementMap}
-                displacementScale={0.05}
-                color={data.color}
-                roughness={0.8}
-                metalness={0.1}
+                displacementScale={controls.displacementScale * 0.5} // Moons are smaller, less displacement
+                displacementBias={controls.displacementBias * 0.5}
+                roughness={controls.roughness}
+                metalness={controls.metalness}
+                emissive={controls.emissiveColor}
+                emissiveIntensity={controls.emissiveIntensity * 0.5}
+            // color={data.color}
             />
         </mesh>
     );
@@ -141,11 +172,22 @@ export const Planet: React.FC = () => {
     const view = useGameStore(state => state.view);
     const moons = useGameStore(state => state.moons);
 
+    const planetControls = useControls('Planet Material', {
+        bumpScale: { value: DEFAULT_PLANET_VALUES.bumpScale, min: 0, max: 0.5, step: 0.01 },
+        displacementScale: { value: DEFAULT_PLANET_VALUES.displacementScale, min: -1, max: 1, step: 0.01 },
+        displacementBias: { value: DEFAULT_PLANET_VALUES.displacementBias, min: -1, max: 1, step: 0.01 },
+        roughness: { value: DEFAULT_PLANET_VALUES.roughness, min: 0, max: 1, step: 0.01 },
+        metalness: { value: DEFAULT_PLANET_VALUES.metalness, min: 0, max: 1, step: 0.01 },
+        emissiveIntensity: { value: DEFAULT_PLANET_VALUES.emissiveIntensity, min: 0, max: 2, step: 0.1 },
+        emissiveColor: DEFAULT_PLANET_VALUES.emissiveColor,
+        normalScale: { value: DEFAULT_PLANET_VALUES.normalScale, min: 0, max: 5, step: 0.1 },
+    }, { collapsed: true });
+
     // Load textures
     const [colorMap, normalMap, specularMap] = useTexture([
-        '/textures/daymap.jpg',
-        '/textures/normal.jpg',
-        '/textures/specular.jpg'
+        '/textures/planet/daymap.jpg',
+        '/textures/planet/normal.jpg',
+        '/textures/planet/specular.jpg'
     ]);
 
     useFrame((_, delta) => {
@@ -160,20 +202,23 @@ export const Planet: React.FC = () => {
         <group>
             {/* Main planet */}
             <mesh ref={meshRef}>
-                <sphereGeometry args={[2, 128, 128]} />
+                <sphereGeometry args={[2, 256, 256]} />
                 <meshStandardMaterial
                     map={colorMap}
                     normalMap={normalMap}
+                    normalScale={new THREE.Vector2(planetControls.normalScale, planetControls.normalScale)}
                     roughnessMap={specularMap}
-                    roughness={0.8}
-                    metalness={0.2}
-                    emissive="#1a1a2e"
-                    emissiveIntensity={0.1}
+                    bumpMap={normalMap} // Using normal as bump since displacement is missing for planet
+                    bumpScale={planetControls.bumpScale * 0.5}
+                    roughness={planetControls.roughness}
+                    metalness={planetControls.metalness}
+                    emissive={planetControls.emissiveColor}
+                    emissiveIntensity={planetControls.emissiveIntensity}
                 />
             </mesh>
 
             {/* Wireframe overlay */}
-            <mesh rotation={meshRef.current?.rotation}>
+            {/* <mesh rotation={meshRef.current?.rotation}>
                 <sphereGeometry args={[2.01, 32, 32]} />
                 <meshBasicMaterial
                     color="#0044ff"
@@ -181,11 +226,11 @@ export const Planet: React.FC = () => {
                     transparent
                     opacity={0.04}
                 />
-            </mesh>
+            </mesh> */}
 
             {/* Moons */}
-            {moons.map(moon => (
-                <Moon key={moon.id} data={moon} />
+            {moons.map((moon, index) => (
+                <Moon key={moon.id} data={moon} index={index} controls={planetControls} />
             ))}
 
             {/* Cloud layer */}

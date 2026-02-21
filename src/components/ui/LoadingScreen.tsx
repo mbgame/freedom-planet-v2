@@ -1,4 +1,4 @@
-import { useGameStore } from '@/store/gameStore';
+'use client';import { useGameStore } from '@/store/gameStore';
 
 export const LoadingScreen: React.FC = () => {
   const isLoading = useGameStore(state => state.isLoading);

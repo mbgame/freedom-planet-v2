@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+'use client';import { useEffect, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 
 export const UIOverlay: React.FC = () => {

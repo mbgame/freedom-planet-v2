@@ -1,4 +1,4 @@
-import { useRef, useMemo, Suspense } from 'react';
+'use client';import { useRef, useMemo, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF, Text } from '@react-three/drei';
 import * as THREE from 'three';

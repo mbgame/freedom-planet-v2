@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+'use client'; import { useState, useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
@@ -24,7 +24,7 @@ const coreFragmentShader = `
   varying vec3  vPosition;
 
   void main() {
-    float fresnel   = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.5);
+    float fresnel   = pow(clamp(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 0.0, 1.0), 2.5);
     float scanline  = sin(vPosition.y * 30.0 - uTime * 4.0) * 0.5 + 0.5;
     scanline        = pow(scanline, 6.0) * 0.35;
     float breathe   = sin(uTime * 2.0) * 0.5 + 0.5;
@@ -52,7 +52,7 @@ const auraFragmentShader = `
   varying vec3  vNormal;
 
   void main() {
-    float rim       = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 1.8);
+    float rim       = pow(clamp(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 0.0, 1.0), 1.8);
     float pulse     = sin(uTime * 1.5 + uRadius * 3.14159) * 0.5 + 0.5;
     float hoverBoost= 1.0 + uHover * 1.2;
     vec3 hoverColor = vec3(1.0, 0.6, 0.05);
@@ -346,7 +346,7 @@ const NodeMarker: React.FC<NodeMarkerProps> = ({
       {/* Solid bright centre dot */}
       <mesh scale={0.38}>
         <sphereGeometry args={[0.07, 16, 16]} />
-        <meshBasicMaterial color={'#e8f8ff'} toneMapped={false} />
+        <meshBasicMaterial color={'#e8f8ff'} toneMapped={true} />
       </mesh>
 
     </group>
