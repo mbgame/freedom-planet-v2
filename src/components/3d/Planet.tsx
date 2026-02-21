@@ -111,7 +111,7 @@ const Moon: React.FC<{ data: MoonData; index: number; controls: any }> = ({ data
     const moonSuffix = '_2048x1024';
 
     const albedoName = `${moonPrefix}Albedo${moonSuffix}.png`;
-    const normalName = `${moonPrefix}Normal${moonSuffix}.png`;
+    const normalName = `${moonPrefix}Normal${moonSuffix}.jpg`;
     const displacementName = `${moonPrefix}Displacement${moonSuffix}.png`;
 
     const [colorMap, normalMap, displacementMap] = useTexture([
