@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as THREE from 'three';
+import { getTerrainWorldHeight, getFlatnessScore } from '@/utils/terrain';
 
 export type ViewState = 'ORBIT' | 'TRANSITION' | 'SURFACE' | 'MOON';
 
@@ -23,6 +24,7 @@ export interface StructureData {
   id: string;
   type: 'Polymer Plants' | 'Robotics Workshop' | 'Aeroponic Farms';
   position: [number, number, number];
+  rotationY: number;
   stats: StructureStat[];
 }
 
@@ -119,34 +121,56 @@ const generateNodes = (): NodeData[] => {
       const types: ('Polymer Plants' | 'Robotics Workshop' | 'Aeroponic Farms')[] = ['Polymer Plants', 'Robotics Workshop', 'Aeroponic Farms'];
       const type = types[Math.floor(Math.random() * types.length)];
 
-      let xPos = (Math.random() - 0.5) * SPAWN_RANGE;
-      let zPos = (Math.random() - 0.5) * SPAWN_RANGE;
+      let xPos = 0;
+      let zPos = 0;
+      let yPos = 0;
       let attempts = 0;
       let isTooClose = true;
+      let bestX = 0;
+      let bestZ = 0;
+      let bestY = 0;
+      let bestScore = Infinity;
 
-      while (isTooClose && attempts < 50) {
-        attempts++;
-        isTooClose = false;
+      // Search for the flattest possible spot
+      const SEARCH_SAMPLES = 30;
+      for (let s = 0; s < SEARCH_SAMPLES; s++) {
+        const testX = (Math.random() - 0.5) * SPAWN_RANGE;
+        const testZ = (Math.random() - 0.5) * SPAWN_RANGE;
 
-        xPos = (Math.random() - 0.5) * SPAWN_RANGE;
-        zPos = (Math.random() - 0.5) * SPAWN_RANGE;
-
+        // 1. Check distance to other structures
+        let tooClose = false;
         for (const existing of structures) {
-          const dx = xPos - existing.position[0];
-          const dz = zPos - existing.position[2];
-          const distance = Math.sqrt(dx * dx + dz * dz);
-
-          if (distance < MIN_STR_DISTANCE) {
-            isTooClose = true;
+          const dx = testX - existing.position[0];
+          const dz = testZ - existing.position[2];
+          if (Math.sqrt(dx * dx + dz * dz) < MIN_STR_DISTANCE) {
+            tooClose = true;
             break;
           }
         }
+        if (tooClose) continue;
+
+        // 2. Evaluate flatness (near 0 height)
+        const score = getFlatnessScore(testX, testZ);
+        if (score < bestScore) {
+          bestScore = score;
+          bestX = testX;
+          bestZ = testZ;
+          bestY = getTerrainWorldHeight(testX, testZ);
+        }
+      }
+
+      // If no valid spot found in samples, just pick a random far-enough spot
+      if (bestScore === Infinity) {
+        bestX = (Math.random() - 0.5) * SPAWN_RANGE;
+        bestZ = (Math.random() - 0.5) * SPAWN_RANGE;
+        bestY = getTerrainWorldHeight(bestX, bestZ);
       }
 
       structures.push({
         id: `${type.toLowerCase().replace(/\s+/g, '-')}-${i}-${j}`,
         type,
-        position: [xPos, 1, zPos],
+        position: [bestX, bestY, bestZ],
+        rotationY: Math.random() * Math.PI * 2,
         stats: generateStatsForType(type)
       });
     }

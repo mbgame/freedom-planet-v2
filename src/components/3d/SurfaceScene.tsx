@@ -1,8 +1,10 @@
-'use client';import { useMemo, useRef, useEffect } from 'react';
+'use client';
+import { useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import { useGameStore } from '@/store/gameStore';
 import { Structure } from './Structure';
+import { getTerrainWorldHeight } from '@/utils/terrain';
 
 // Optimized StarField with instancing
 export const StarField: React.FC<{ count?: number }> = ({ count = 3000 }) => {
@@ -42,6 +44,51 @@ export const StarField: React.FC<{ count?: number }> = ({ count = 3000 }) => {
         depthWrite={false}
       />
     </points>
+  );
+};
+
+// Procedural terrain ground with improved variation
+const TerrainGround: React.FC = () => {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  const geometry = useMemo(() => {
+    const size = 60;
+    const segments = 48; // keep low for mobile
+    const geo = new THREE.PlaneGeometry(size, size, segments, segments);
+    geo.rotateX(-Math.PI / 2);
+
+    const pos = geo.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+
+      // Get world height from shared utility
+      const h = getTerrainWorldHeight(x, z);
+      pos.setY(i, h);
+
+      // Vertex colors: Brighter rocky surface with detail noise
+      const noise = (Math.sin(x * 5.0) * Math.cos(z * 5.0)) * 0.1;
+      const brightness = 0.15 + (Math.abs(h) * 0.1) + noise;
+      colors[i * 3] = brightness * 0.6;     // R
+      colors[i * 3 + 1] = brightness * 0.7; // G
+      colors[i * 3 + 2] = brightness * 1.0; // B
+    }
+
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
+    return geo;
+  }, []);
+
+  return (
+    <mesh ref={meshRef} geometry={geometry} receiveShadow>
+      <meshStandardMaterial
+        vertexColors
+        roughness={0.9}
+        metalness={0.1}
+      />
+    </mesh>
   );
 };
 
@@ -108,24 +155,8 @@ export const SurfaceScene: React.FC = () => {
 
   return (
     <group>
-      {/* Ground plane with subtle vertex displacement */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, 0, 0]}>
-        <planeGeometry args={[50, 50, 64, 64]} />
-        <meshStandardMaterial
-          color="#0f172a"
-          roughness={0.9}
-          metalness={0.2}
-        />
-      </mesh>
-
-      {/* Grid helper */}
-      <gridHelper
-        args={[50, 50, '#1e293b', '#0f172a']}
-        position={[0, 0.02, 0]}
-      />
-
-      {/* Fog for depth */}
-      {/* <fog attach="fog" args={['#020617', 8, 30]} /> */}
+      {/* Procedural terrain ground */}
+      <TerrainGround />
 
       {/* Render structures from selected node */}
       {selectedNode.structures.map((structure) => (
@@ -133,14 +164,18 @@ export const SurfaceScene: React.FC = () => {
       ))}
 
       {/* Ambient particles/stars in background */}
-      <StarField count={500} />
+      <StarField count={200} />
 
-      {/* Additional ambient lighting for surface */}
-      <ambientLight intensity={2} color="#ffffff" />
-      {/* <hemisphereLight
-        args={['#0ea5e9', '#ffffff', 10.0]}
-        position={[0, 20, 0]}
-      /> */}
+      {/* Surface Lighting - Dramatic side-lighting for terrain depth */}
+      <ambientLight intensity={0.2} color="#4bbfff" />
+      <directionalLight
+        position={[10, 5, 5]}
+        intensity={2.5}
+        color="#ffffff"
+        castShadow
+      />
+      {/* Subtle cyan point light for structure focus */}
+      <pointLight position={[0, 5, 0]} intensity={1.5} color="#00ffff" />
     </group>
   );
 };

@@ -18,9 +18,9 @@ export default function Home() {
     <main className="w-full h-screen bg-[#020617] relative overflow-hidden font-sans select-none">
       <LoadingScreen />
       <UIOverlay />
-      
+
       <Canvas
-        dpr={[1, 2]} // Adaptive pixel ratio for performance
+        dpr={[1, 1.5]} // Capped for mobile performance
         gl={{
           antialias: true,
           alpha: false,

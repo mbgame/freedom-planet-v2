@@ -1,4 +1,4 @@
-'use client';import { useRef, useMemo, Suspense } from 'react';
+'use client'; import { useRef, useMemo, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF, Text } from '@react-three/drei';
 import * as THREE from 'three';
@@ -9,28 +9,29 @@ interface StructureProps {
   data: StructureData;
 }
 
-const RoboticLabModel = () => {
-  const { scene } = useGLTF('/models/robotic building.glb');
-  const clonedScene = useMemo(() => scene.clone(), [scene]);
+// Helper to ensure a model is grounded based on its bounding box
+const GroundedModel: React.FC<{ modelPath: string; scale?: number }> = ({ modelPath, scale = 3 }) => {
+  const { scene } = useGLTF(modelPath);
+  const clonedScene = useMemo(() => {
+    const s = scene.clone();
+    s.scale.setScalar(scale);
+    s.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(s);
+    // Align bottom of bounding box to y=0
+    s.position.y = -box.min.y;
+    return s;
+  }, [scene, scale]);
 
-  return <primitive object={clonedScene} scale={3} />;
+  return <primitive object={clonedScene} />;
 };
 
-const ExtractorModel = () => {
-  const { scene } = useGLTF('/models/farming lab.glb');
-  const clonedScene = useMemo(() => scene.clone(), [scene]);
-  return <primitive object={clonedScene} scale={3} />;
-};
-
-const GeneratorModel = () => {
-  const { scene } = useGLTF('/models/polymer.glb');
-  const clonedScene = useMemo(() => scene.clone(), [scene]);
-  return <primitive object={clonedScene} scale={3} />;
-};
+const RoboticLabModel = () => <GroundedModel modelPath="/models/robotic building.glb" scale={3} />;
+const ExtractorModel = () => <GroundedModel modelPath="/models/farming lab.glb" scale={3} />;
+const GeneratorModel = () => <GroundedModel modelPath="/models/polymer.glb" scale={3} />;
 
 const ModelFallback = () => (
-  <mesh>
-    <boxGeometry args={[0.5, 0.5, 0.5]} />
+  <mesh position={[0, 0.75, 0]}>
+    <boxGeometry args={[1.5, 1.5, 1.5]} />
     <meshStandardMaterial color="#3b82f6" wireframe />
   </mesh>
 );
@@ -46,34 +47,28 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
   const ringRef = useRef<THREE.Mesh>(null);
   const glowRef = useRef<THREE.Mesh>(null);
   const structureGroupRef = useRef<THREE.Group>(null);
-  const animatedY = useRef(data.position[1]);
+  const animatedY = useRef(0);
 
   // Animation logic
   useFrame(({ clock }, delta) => {
-    // 1. Lift Animation (Smooth transition when selected)
-    const targetY = isSelected ? data.position[1] + 0.4 : data.position[1];
-    animatedY.current = THREE.MathUtils.lerp(animatedY.current, targetY, delta * 4);
+    // 1. Lift Animation (Relative to terrain height)
+    const targetLift = isSelected ? 0.4 : 0;
+    animatedY.current = THREE.MathUtils.lerp(animatedY.current, targetLift, delta * 4);
 
     // Apply animations to structure group
     if (structureGroupRef.current) {
       structureGroupRef.current.position.y = animatedY.current;
     }
-
-
     // 3. Selection Ring & Glow Animation
     if (ringRef.current) {
-      // Rotation
       ringRef.current.rotation.z += delta * 1.5;
-      // Pulse Opacity
       const pulse = 0.4 + Math.sin(clock.elapsedTime * 6) * 0.15;
       (ringRef.current.material as THREE.MeshBasicMaterial).opacity = pulse;
     }
 
     if (glowRef.current) {
-      // Pulse Opacity
       const pulse = 0.15 + Math.sin(clock.elapsedTime * 6) * 0.08;
       (glowRef.current.material as THREE.MeshBasicMaterial).opacity = pulse;
-      // Pulse Scale slightly
       const glowScale = 1 + Math.sin(clock.elapsedTime * 6) * 0.05;
       glowRef.current.scale.set(glowScale, glowScale, 1);
     }
@@ -81,7 +76,7 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
 
 
   return (
-    <group position={[data.position[0], 0, data.position[2]]}>
+    <group position={[data.position[0], data.position[1], data.position[2]]}>
       {/* Selection ring - placed on ground, not floating with model */}
       {isSelected && (
         <mesh
@@ -115,16 +110,14 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
         </mesh>
       )}
 
-      {/* Main structure group (Animated) */}
-      <group ref={structureGroupRef}>
+      {/* Main structure group (Animated and Rotated) */}
+      <group ref={structureGroupRef} rotation={[0, data.rotationY, 0]}>
         {/* Main structure mesh and logo */}
         <group
           position={[0, 0, 0]} // animatedY handles the lift
           onClick={(e) => {
             e.stopPropagation();
-            // Focus camera on this structure
             useGameStore.getState().setFocusedStructure(data.id);
-            // Toggle selection or select new
             if (isSelected) {
               setSelectedStructure(null);
             } else {
@@ -132,61 +125,22 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
             }
           }}
         >
-          {/* 3D Structure Logo - Split by space to color second word green */}
-          {(() => {
-            // const words = data.type.split(' ');
-            // if (words.length > 1) {
-            //   const firstWord = words[0];
-            //   const secondWord = words.slice(1).join(' ');
-            //   return (
-            //     <group position={[0, -0.05, 0.75]} rotation={[-Math.PI / 8, 0, 0]}>
-            //       <Text
-            //         position={[-0.05, 0, 0]}
-            //         fontSize={0.15}
-            //         anchorX="right"
-            //         anchorY="middle"
-            //         fontWeight={900}
-            //         letterSpacing={0.15}
-            //         outlineWidth={0.02}
-            //         outlineColor="#000000"
-            //       >
-            //         {firstWord}
-            //         <meshBasicMaterial color="#ffffff" toneMapped={false} />
-            //       </Text>
-            //       <Text
-            //         position={[0.05, 0, 0]}
-            //         fontSize={0.15}
-            //         anchorX="left"
-            //         anchorY="middle"
-            //         fontWeight={900}
-            //         letterSpacing={0.15}
-            //         outlineWidth={0.02}
-            //         outlineColor="#000000"
-            //       >
-            //         {secondWord}
-            //         <meshBasicMaterial color="#00ff41" toneMapped={false} />
-            //       </Text>
-            //     </group>
-            //   );
-            // }
-            return (
-              <Text
-                position={[0, -0.05, data.type === 'Polymer Plants' ? 0.35 : 0.75]} // Positioned above the model center
-                rotation={[-Math.PI / 8, 0, 0]}
-                fontSize={0.15}
-                color="#ffffff"
-                anchorX="center"
-                anchorY="middle"
-                fontWeight={900}
-                letterSpacing={0.15}
-                outlineWidth={0.02}
-                outlineColor="#000000"
-              >
-                {data.type}
-                <meshBasicMaterial color="#00ffff" toneMapped={false} />
-              </Text>
-            );
-          })()}
+          {/* 3D Structure Logo - Rotates and swings with the structure */}
+          <Text
+            position={[0, 0.8, data.type === 'Robotics Workshop' ? 0.8 : data.type === 'Polymer Plants' ? 0.3 : 0.6]} // Offset forward and slightly up
+            rotation={[-Math.PI / 12, 0, 0]} // Nearly vertical but tilted for view
+            fontSize={0.1}
+            color="#ffffff"
+            anchorX="center"
+            anchorY="middle"
+            fontWeight={900}
+            letterSpacing={0.1}
+            outlineWidth={0.03}
+            outlineColor="#000000"
+          >
+            {data.type.toUpperCase()}
+            <meshBasicMaterial color="#00ffff" toneMapped={false} />
+          </Text>
 
           {/* Different geometries based on type */}
           <Suspense fallback={<ModelFallback />}>
@@ -198,7 +152,7 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
 
         {/* 3D Data Label - Inside the animated group to follow movement */}
         <DataLabel
-          position={new THREE.Vector3(0, 0, 0)} // Position relative to structureGroupRef center
+          position={new THREE.Vector3(0, 0.1, 0)} // Anchored from base
           stats={data.stats}
           structureName={data.type}
           isFocused={isFocused}
@@ -206,18 +160,32 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
         />
       </group>
 
-      {/* Base platform - stays static on the ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]} receiveShadow>
-        <circleGeometry args={[0.9, 32]} />
-        <meshStandardMaterial
-          color="#0f172a"
-          transparent
-          opacity={0.7}
-          roughness={0.8}
-          metalness={0.2}
-        />
-      </mesh>
+      {/* Base platform foundation - improved to handle sloped terrain */}
+      <group position={[0, 0.01, 0]}>
+        {/* Foundation "Plug" to handle sloped terrain gaps */}
+        <mesh position={[0, -0.25, 0]}>
+          <cylinderGeometry args={[0.9, 0.9, 0.5, 32]} />
+          <meshStandardMaterial
+            color="#0f172a"
+            metalness={0.6}
+            roughness={0.4}
+          />
+        </mesh>
+
+        {/* Top platform flange */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <circleGeometry args={[0.95, 32]} />
+          <meshStandardMaterial
+            color="#1e293b"
+            transparent
+            opacity={0.9}
+            roughness={0.5}
+            metalness={0.3}
+          />
+        </mesh>
+      </group>
 
     </group>
   );
 };
+

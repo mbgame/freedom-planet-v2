@@ -10,56 +10,77 @@ import { useGameStore, MoonData } from '@/store/gameStore';
 const SHOW_CONTROLS = process.env.NEXT_PUBLIC_SHOW_CONTROLS === 'true';
 
 const DEFAULT_PLANET_VALUES = {
-    bumpScale: 0.0,
+    bumpScale: 0.05,
     displacementScale: 0.0,
-    displacementBias: -0.04,
+    displacementBias: 0.0,
     roughness: 0.6,
     metalness: 0.2,
-    emissiveIntensity: 0.0,
-    emissiveColor: '#1a1a2e',
-    normalScale: 0.7,
+    emissiveIntensity: 0.05,
+    emissiveColor: '#001a33',
+    normalScale: 0.8,
 };
 
-// Fixed atmosphere shader
+// Realistic atmosphere shaders — thin Fresnel rim with sun-side brightening
 const atmosphereVertexShader = `
-  uniform vec3 viewVector;
-  varying float intensity;
+  varying vec3 vNormal;
+  varying vec3 vPosition;
   
   void main() {
-    vec3 vNormal = normalize(normalMatrix * normal);
-    vec3 vNormel = normalize(normalMatrix * viewVector);
-    intensity = pow(max(0.0, 0.7 - dot(vNormal, vNormel)), 3.0);
+    vNormal = normalize(normalMatrix * normal);
+    vPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
 
 const atmosphereFragmentShader = `
   uniform vec3 glowColor;
-  varying float intensity;
+  uniform vec3 sunDirection;
+  uniform float atmosphereIntensity;
+  varying vec3 vNormal;
+  varying vec3 vPosition;
   
   void main() {
-    vec3 glow = glowColor * intensity;
-    gl_FragColor = vec4(glow, intensity * 0.8);
+    vec3 viewDir = normalize(-vPosition);
+    float dotNV = dot(vNormal, viewDir);
+    
+    // Fresnel rim — power 4.0 gives a thin realistic edge
+    float fresnel = pow(1.0 - max(0.0, dotNV), 4.0);
+    
+    // Simple sun-side half-sphere brightness
+    float sunFactor = max(0.0, dot(vNormal, sunDirection));
+    
+    // Combine: visible on sun side, faint on dark side
+    float intensity = fresnel * (0.15 + 0.85 * sunFactor) * atmosphereIntensity;
+    
+    gl_FragColor = vec4(glowColor, intensity * 0.4);
   }
 `;
 
-export const Atmosphere: React.FC = () => {
+export const Atmosphere: React.FC<{ color: string; intensity: number }> = ({ color, intensity }) => {
     const meshRef = useRef<THREE.Mesh>(null);
     const { camera } = useThree();
 
+    // Use common scene lighting controls to get sun direction
+    const { directPosition } = useControls('Scene Lighting', {
+        directPosition: { x: 10, y: 10, z: 5 },
+    }, { collapsed: true });
+
     const uniforms = useMemo(() => ({
-        glowColor: { value: new THREE.Color('#00bfff') },
-        viewVector: { value: new THREE.Vector3() },
+        glowColor: { value: new THREE.Color(color) },
+        sunDirection: { value: new THREE.Vector3() },
+        atmosphereIntensity: { value: intensity },
     }), []);
 
     useFrame(() => {
         if (meshRef.current) {
-            uniforms.viewVector.value.subVectors(camera.position, meshRef.current.position);
+            uniforms.sunDirection.value.set(directPosition.x, directPosition.y, directPosition.z).normalize();
+            uniforms.glowColor.value.set(color);
+            uniforms.atmosphereIntensity.value = intensity;
         }
     });
 
     return (
-        <mesh ref={meshRef} scale={2.2}>
+        <mesh ref={meshRef} scale={2.04}>
             <sphereGeometry args={[1, 64, 64]} />
             <shaderMaterial
                 uniforms={uniforms}
@@ -68,6 +89,7 @@ export const Atmosphere: React.FC = () => {
                 side={THREE.BackSide}
                 blending={THREE.AdditiveBlending}
                 transparent
+                depthWrite={false}
             />
         </mesh>
     );
@@ -80,19 +102,19 @@ export const CloudLayer: React.FC = () => {
 
     useFrame((_, delta) => {
         if (meshRef.current) {
-            meshRef.current.rotation.y += delta * 0.035; // Slower than planet
+            meshRef.current.rotation.y += delta * 0.02; // Slower, more majestic rotation
         }
     });
 
     return (
-        <mesh ref={meshRef} scale={2.025}>
-            <sphereGeometry args={[1, 64, 64]} />
+        <mesh ref={meshRef} scale={2.02}>
+            <sphereGeometry args={[1, 32, 32]} />
             <meshStandardMaterial
                 map={cloudMap}
                 transparent
-                opacity={0.4}
+                opacity={0.35}
                 blending={THREE.AdditiveBlending}
-                side={THREE.DoubleSide}
+                side={THREE.FrontSide}
                 depthWrite={false}
             />
         </mesh>
@@ -147,21 +169,16 @@ const Moon: React.FC<{ data: MoonData; index: number; controls: any }> = ({ data
             }}
             onPointerOut={() => document.body.style.cursor = 'auto'}
         >
-            <sphereGeometry args={[1, 128, 128]} />
+            <sphereGeometry args={[1, 48, 48]} />
             <meshStandardMaterial
                 map={colorMap}
                 normalMap={normalMap}
-                normalScale={new THREE.Vector2(controls.normalScale, controls.normalScale)}
-                // bumpMap={displacementMap}
-                // bumpScale={controls.bumpScale}
+                normalScale={new THREE.Vector2(1.0, 1.0)}
                 displacementMap={displacementMap}
-                displacementScale={controls.displacementScale * 0.5} // Moons are smaller, less displacement
+                displacementScale={controls.displacementScale * 0.5}
                 displacementBias={controls.displacementBias * 0.5}
-                roughness={controls.roughness}
-                metalness={controls.metalness}
-                emissive={controls.emissiveColor}
-                emissiveIntensity={controls.emissiveIntensity * 0.5}
-            // color={data.color}
+                roughness={0.9}
+                metalness={0.05}
             />
         </mesh>
     );
@@ -181,6 +198,9 @@ export const Planet: React.FC = () => {
         emissiveIntensity: { value: DEFAULT_PLANET_VALUES.emissiveIntensity, min: 0, max: 2, step: 0.1 },
         emissiveColor: DEFAULT_PLANET_VALUES.emissiveColor,
         normalScale: { value: DEFAULT_PLANET_VALUES.normalScale, min: 0, max: 5, step: 0.1 },
+        atmosphereColor: '#4bbfff',
+        showAtmosphere: { value: true, label: 'Show Atmosphere' },
+        atmosphereIntensity: { value: 0.35, min: 0, max: 2, step: 0.01 },
     }, { collapsed: true });
 
     // Load textures
@@ -202,18 +222,19 @@ export const Planet: React.FC = () => {
         <group>
             {/* Main planet */}
             <mesh ref={meshRef}>
-                <sphereGeometry args={[2, 256, 256]} />
+                <sphereGeometry args={[2, 128, 128]} />
                 <meshStandardMaterial
                     map={colorMap}
                     normalMap={normalMap}
                     normalScale={new THREE.Vector2(planetControls.normalScale, planetControls.normalScale)}
                     roughnessMap={specularMap}
                     bumpMap={normalMap} // Using normal as bump since displacement is missing for planet
-                    bumpScale={planetControls.bumpScale * 0.5}
+                    bumpScale={planetControls.bumpScale}
                     roughness={planetControls.roughness}
                     metalness={planetControls.metalness}
                     emissive={planetControls.emissiveColor}
                     emissiveIntensity={planetControls.emissiveIntensity}
+                    envMapIntensity={1.5}
                 />
             </mesh>
 
@@ -237,7 +258,12 @@ export const Planet: React.FC = () => {
             <CloudLayer />
 
             {/* Atmosphere glow */}
-            <Atmosphere />
+            {planetControls.showAtmosphere && (
+                <Atmosphere
+                    color={planetControls.atmosphereColor}
+                    intensity={planetControls.atmosphereIntensity}
+                />
+            )}
         </group>
     );
 };

@@ -1,8 +1,38 @@
-'use client';import { useGameStore } from '@/store/gameStore';
+'use client';
+
+import { useGameStore } from '@/store/gameStore';
+import { useEffect } from 'react';
+import * as THREE from 'three';
+
 
 export const LoadingScreen: React.FC = () => {
   const isLoading = useGameStore(state => state.isLoading);
   const progress = useGameStore(state => state.loadingProgress);
+  const setLoading = useGameStore(state => state.setLoading);
+
+  useEffect(() => {
+    if (!isLoading) return;
+
+    // Direct subscription to the global loading manager to ensure we catch all events
+    THREE.DefaultLoadingManager.onProgress = (_url, loaded, total) => {
+      const p = Math.round((loaded / total) * 100);
+      setLoading(true, p);
+    };
+
+    THREE.DefaultLoadingManager.onLoad = () => {
+      setTimeout(() => setLoading(false, 100), 500);
+    };
+
+    // Safety fallback: if nothing loads for 2 seconds, assume we are good (handles cache/empty scenes)
+    const timeout = setTimeout(() => {
+      setLoading(false, 100);
+    }, 2500);
+
+    return () => {
+      clearTimeout(timeout);
+      // Don't nullify onProgress here as other things might need it, but we can reset if needed
+    };
+  }, [isLoading, setLoading]);
 
   if (!isLoading) return null;
 
@@ -27,7 +57,7 @@ export const LoadingScreen: React.FC = () => {
               style={{ width: `${progress}%` }}
             />
           </div>
-          
+
           <div className="flex justify-between text-xs text-slate-500 font-mono">
             <span>INITIALIZING SYSTEMS</span>
             <span>{progress}%</span>

@@ -29,6 +29,7 @@ export const PostEffects = () => {
 
     // Leva controls for Post Processing
     const {
+        bloomEnabled,
         bloomIntensity,
         bloomThreshold,
         bloomSmoothing,
@@ -41,9 +42,10 @@ export const PostEffects = () => {
         noiseOpacity
     } = useControls('Post Processing', {
         Bloom: folder({
-            bloomIntensity: { value: 0.25, min: 0, max: 2, step: 0.01, label: 'Intensity' },
-            bloomThreshold: { value: 1.0, min: 0, max: 1, step: 0.01, label: 'Threshold' },
-            bloomSmoothing: { value: 0.9, min: 0, max: 1, step: 0.01, label: 'Smoothing' },
+            bloomEnabled: { value: false, label: 'Enabled' },
+            bloomIntensity: { value: 0.2, min: 0, max: 2, step: 0.01, label: 'Intensity' },
+            bloomThreshold: { value: 0.95, min: 0, max: 1, step: 0.01, label: 'Threshold' },
+            bloomSmoothing: { value: 0.8, min: 0, max: 1, step: 0.01, label: 'Smoothing' },
         }),
         DOF: folder({
             dofFocalLength: { value: 0.05, min: 0.01, max: 0.5, step: 0.01, label: 'Focal Length' },
@@ -59,8 +61,8 @@ export const PostEffects = () => {
             },
         }),
         Vignette: folder({
-            vignetteOffset: { value: 0.05, min: 0, max: 1, step: 0.01, label: 'Offset' },
-            vignetteDarkness: { value: 0.4, min: 0, max: 1, step: 0.01, label: 'Darkness' },
+            vignetteOffset: { value: 0.1, min: 0, max: 1, step: 0.01, label: 'Offset' },
+            vignetteDarkness: { value: 0.3, min: 0, max: 1, step: 0.01, label: 'Darkness' },
         }),
         Noise: folder({
             noiseOpacity: { value: 0.01, min: 0, max: 0.1, step: 0.001, label: 'Opacity' },
@@ -91,13 +93,15 @@ export const PostEffects = () => {
     if (!mounted || view === 'SURFACE') return null;
 
     const children = [
-        <Bloom
-            key="bloom"
-            intensity={bloomIntensity}
-            luminanceThreshold={bloomThreshold}
-            luminanceSmoothing={bloomSmoothing}
-            height={256}
-        />,
+        bloomEnabled ? (
+            <Bloom
+                key="bloom"
+                intensity={bloomIntensity}
+                luminanceThreshold={bloomThreshold}
+                luminanceSmoothing={bloomSmoothing}
+                height={256}
+            />
+        ) : null,
         view === 'MOON' ? (
             <DepthOfField
                 key="dof"

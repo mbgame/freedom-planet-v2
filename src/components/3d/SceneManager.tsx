@@ -49,34 +49,27 @@ export const SceneManager: React.FC = () => {
     directPosition: DEFAULT_LIGHT_VALUES.directPosition,
   }, { collapsed: true });
 
-  // Simulate asset loading
-  useEffect(() => {
-    const loadAssets = async () => {
-      // Simulate loading time
-      for (let i = 0; i <= 100; i += 10) {
-        setLoading(true, i);
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      setLoading(false, 100);
-    };
+  // Loading is now handled by the LoadingScreen component using useProgress()
 
-    loadAssets();
-  }, [setLoading]);
 
   return (
     <>
       <CameraRig />
 
-      {/* Lighting setup */}
-      <ambientLight intensity={ambientIntensity} color={ambientColor} />
-      <directionalLight
-        position={[directPosition.x, directPosition.y, directPosition.z]}
-        intensity={directIntensity}
-        color={directColor}
-        castShadow
-        shadow-mapSize-width={512}
-        shadow-mapSize-height={512}
-      />
+      {/* Lighting setup - Only for Orbit/Moon views */}
+      {view !== 'SURFACE' && (
+        <>
+          <ambientLight intensity={ambientIntensity} color={ambientColor} />
+          <directionalLight
+            position={[directPosition.x, directPosition.y, directPosition.z]}
+            intensity={directIntensity}
+            color={directColor}
+            castShadow
+            shadow-mapSize-width={512}
+            shadow-mapSize-height={512}
+          />
+        </>
+      )}
       {/* Render based on view state */}
       {view !== 'SURFACE' ? (
         <>

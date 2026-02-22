@@ -1,4 +1,4 @@
-'use client';import { useRef, useEffect } from 'react';
+'use client'; import { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
@@ -104,30 +104,41 @@ export const CameraRig: React.FC = () => {
 
       const time = clock.getElapsedTime();
 
-      // Calculate the specific ideal camera position for this structure
-      // We use a fixed offset relative to the structure's ground position
-      const xOffset = 6 + Math.sin(time * 0.4) * 0.8 + navOffset;
-      const yOffset = 1.8 + Math.sin(time * 0.2) * 0.1;
-      const zOffset = 6 + Math.cos(time * 0.3) * 0.2;
+      // Base camera distance and height
+      const baseDistance = 8.5;
+      const baseHeight = 1.8;
+
+      // Add "breathing" and navigation offsets to the distance and angles
+      // We calculate a vector in the structure's "front" space
+      const angleOffset = navOffset * 0.1; // Sweep side-to-side with swipe
+      const driftX = Math.sin(time * 0.4) * 0.5;
+      const driftY = Math.sin(time * 0.2) * 0.1;
+      const driftZ = Math.cos(time * 0.3) * 0.2;
+
+      // Calculate world position relative to structure rotation
+      // Standard front is Z+, so we rotate the front vector by rotationY
+      const viewAngle = currentStructure.rotationY + angleOffset;
+
+      const relX = Math.sin(viewAngle) * (baseDistance + driftZ) + driftX;
+      const relZ = Math.cos(viewAngle) * (baseDistance + driftZ);
 
       targetPosition.current.set(
-        currentStructure.position[0] + xOffset,
-        currentStructure.position[1] + yOffset,
-        currentStructure.position[2] + zOffset
+        currentStructure.position[0] + relX,
+        currentStructure.position[1] + baseHeight + driftY,
+        currentStructure.position[2] + relZ
       );
 
       // Calculate the focus point (slightly above the structure)
       targetLookAt.current.set(
         currentStructure.position[0],
-        currentStructure.position[1] + 0.6,
+        currentStructure.position[1] + 1.2,
         currentStructure.position[2]
       );
 
-      // Smoothly move camera towards target plane
+      // Smoothly move camera towards target
       camera.position.lerp(targetPosition.current, lerpSpeed);
 
       // Smoothly rotate camera towards structure
-      // We maintain a persistent look-at property to bridge structure changes
       if (!camera.userData.currentLookAt) {
         camera.userData.currentLookAt = targetLookAt.current.clone();
       }

@@ -1,4 +1,4 @@
-'use client';import { useRef, useMemo } from 'react';
+'use client'; import { useRef, useMemo } from 'react';
 import { Text, Line } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -29,21 +29,67 @@ export const DataLabel: React.FC<DataLabelProps> = ({ position, stats, structure
   const groupRef = useRef<THREE.Group>(null);
   const glowRef = useRef<THREE.Mesh>(null);
   const scanlineRef = useRef<THREE.Mesh>(null);
+  const lineRef = useRef<any>(null);
+  const particleRef = useRef<THREE.Mesh>(null);
   const scaleRef = useRef(0);
 
-  // Billboard effect and animation
+  // Billboard effect and dynamic positioning
   useFrame(({ camera, clock }) => {
     if (groupRef.current) {
-      groupRef.current.quaternion.copy(camera.quaternion);
+      // 1. Force the label to always face the camera
+      // Account for parent rotation inversion for perfect billboarding
+      if (groupRef.current.parent) {
+        const parentQuat = new THREE.Quaternion();
+        groupRef.current.parent.getWorldQuaternion(parentQuat);
+        groupRef.current.quaternion.copy(camera.quaternion).premultiply(parentQuat.invert());
+      } else {
+        groupRef.current.quaternion.copy(camera.quaternion);
+      }
 
-      // Animation pop-up effect
+      // 2. Animation pop-up effect
       const targetScale = isSelected ? 1 : 0;
       scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, targetScale, 0.15);
       groupRef.current.scale.setScalar(scaleRef.current);
 
-      // Floating animation when visible
-      if (scaleRef.current > 0.01) {
-        groupRef.current.position.y = position.y + 2 + Math.sin(clock.elapsedTime * 1.5) * 0.05;
+      // 3. Position the label "in front" of the structure's center relative to camera
+      const cameraDir = new THREE.Vector3();
+      camera.getWorldDirection(cameraDir).negate();
+
+      const worldOffset = cameraDir.clone();
+      worldOffset.y = 0;
+      worldOffset.normalize().multiplyScalar(1.5);
+
+      // Convert world-space offset to local-space of the parent
+      const localOffset = worldOffset.clone();
+      if (groupRef.current.parent) {
+        const parentQuat = new THREE.Quaternion();
+        groupRef.current.parent.getWorldQuaternion(parentQuat);
+        localOffset.applyQuaternion(parentQuat.invert());
+      }
+
+      // Match y position of structure (with a small hover for readability)
+      const hoverY = position.y + 2.4 + Math.sin(clock.elapsedTime * 1.5) * 0.05;
+
+      const targetPos = new THREE.Vector3(
+        position.x + localOffset.x,
+        hoverY,
+        position.z + localOffset.z
+      );
+
+      groupRef.current.position.copy(targetPos);
+
+      // 4. Update holographic line geometry to follow label
+      if (lineRef.current && lineRef.current.geometry) {
+        lineRef.current.geometry.setPositions([
+          position.x, position.y, position.z,
+          targetPos.x, targetPos.y, targetPos.z
+        ]);
+        lineRef.current.computeLineDistances();
+      }
+
+      // 5. Update midway particle position
+      if (particleRef.current) {
+        particleRef.current.position.lerpVectors(position, targetPos, 0.5);
       }
     }
 
@@ -70,20 +116,20 @@ export const DataLabel: React.FC<DataLabelProps> = ({ position, stats, structure
 
   return (
     <>
-      {/* Holographic connection line - Only show when selected/animating */}
+      {/* Holographic connection line - Dynamic link to label */}
       {isSelected && (
         <>
           <Line
-            points={linePoints}
+            ref={lineRef}
+            points={[position, position]} // Will be updated in useFrame
             color="#00ff41"
             transparent
             opacity={0.6}
             lineWidth={2}
-            position={position}
           />
 
-          {/* Glowing particles along line */}
-          <mesh position={[position.x, position.y + 0.9, position.z]}>
+          {/* Glowing particle at the midway point */}
+          <mesh ref={particleRef}>
             <sphereGeometry args={[0.02, 8, 8]} />
             <meshBasicMaterial color="#00ff41" transparent opacity={0.8} />
           </mesh>
@@ -91,7 +137,7 @@ export const DataLabel: React.FC<DataLabelProps> = ({ position, stats, structure
       )}
 
       {/* Main Label Group */}
-      <group ref={groupRef} position={[position.x, position.y + 2, position.z]} scale={0}>
+      <group ref={groupRef} scale={0}>
 
         {/* Outer glow aura */}
         <mesh ref={glowRef} position={[0, 0, -0.03]}>
