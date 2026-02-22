@@ -169,7 +169,7 @@ const Moon: React.FC<{ data: MoonData; index: number; controls: any }> = ({ data
             }}
             onPointerOut={() => document.body.style.cursor = 'auto'}
         >
-            <sphereGeometry args={[1, 48, 48]} />
+            <sphereGeometry args={[1, 64, 64]} />
             <meshStandardMaterial
                 map={colorMap}
                 normalMap={normalMap}
