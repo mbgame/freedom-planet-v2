@@ -60,20 +60,20 @@ export const LoadingScreen: React.FC = () => {
       className={`fixed inset-0 bg-[#020617] z-[100] flex items-center justify-center transition-all duration-1000 ease-in-out ${fadeOut ? 'opacity-0 scale-110 pointer-events-none' : 'opacity-100'
         }`}
     >
-      <div className="text-center space-y-10 max-w-lg px-6">
+      <div className="text-center space-y-8 sm:space-y-10 max-w-lg px-6 w-full">
         {/* Logo/Title */}
         <div className="space-y-4 relative">
           <div className="absolute -inset-16 bg-cyan-500/10 blur-[100px] rounded-full animate-pulse" />
-          <h1 className="text-8xl font-black text-white tracking-tighter drop-shadow-[0_0_40px_rgba(34,211,238,0.3)] italic">
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black text-white tracking-tighter drop-shadow-[0_0_40px_rgba(34,211,238,0.3)] italic">
             AETHER<span className="text-cyan-400 not-italic">OS</span>
           </h1>
-          <p className="text-xs text-cyan-400/40 uppercase tracking-[0.6em] font-light">
+          <p className="text-[10px] sm:text-xs text-cyan-400/40 uppercase tracking-[0.2em] sm:tracking-[0.6em] font-light">
             Nexus Protocol • Terminal v4.2
           </p>
         </div>
 
         {/* Progress bar */}
-        <div className="w-80 mx-auto space-y-5">
+        <div className="w-full max-w-[280px] sm:w-80 mx-auto space-y-5">
           <div className="relative h-1.5 bg-slate-900/80 rounded-full overflow-hidden backdrop-blur-md border border-white/5">
             <div
               className="h-full bg-gradient-to-r from-blue-600 via-cyan-400 to-emerald-400 transition-all duration-700 ease-out shadow-[0_0_20px_rgba(34,211,238,0.6)]"
@@ -110,13 +110,13 @@ export const LoadingScreen: React.FC = () => {
         style={{ backgroundImage: 'radial-gradient(#1e293b 0.5px, transparent 0.5px)', backgroundSize: '24px 24px' }} />
 
       {/* Decorative HUD elements */}
-      <div className="absolute top-12 left-12 text-[10px] font-mono text-cyan-500/30 space-y-2 border-l border-cyan-500/20 pl-4">
+      <div className="absolute top-6 left-6 sm:top-12 sm:left-12 text-[10px] font-mono text-cyan-500/30 space-y-2 border-l border-cyan-500/20 pl-4">
         <div>NODE_ID: SOL_03</div>
         <div>SYS_LOAD: PASS</div>
         <div>ENCRYPT: AES-256</div>
       </div>
 
-      <div className="absolute bottom-12 right-12 text-[10px] font-mono text-cyan-500/30 border-r border-cyan-500/20 pr-4 text-right">
+      <div className="absolute bottom-6 right-6 sm:bottom-12 sm:right-12 text-[10px] font-mono text-cyan-500/30 border-r border-cyan-500/20 pr-4 text-right">
         MEMORY_BUFFER: OK<br />
         LATENCY: 14ms
       </div>

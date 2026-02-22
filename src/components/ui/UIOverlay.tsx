@@ -29,10 +29,10 @@ export const UIOverlay: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-start pointer-events-auto">
         <div>
-          <h1 className="text-4xl font-bold text-white tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+          <h1 className="text-2xl sm:text-4xl font-bold text-white tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
             AETHER<span className="text-cyan-400">OS</span>
           </h1>
-          <p className="text-xs text-cyan-200/70 uppercase tracking-[0.25em] mt-1.5">
+          <p className="text-[10px] sm:text-xs text-cyan-200/70 uppercase tracking-[0.15em] sm:tracking-[0.25em] mt-1">
             Planetary Systems Monitor
           </p>
         </div>
@@ -81,11 +81,11 @@ export const UIOverlay: React.FC = () => {
         {(view === 'SURFACE' || view === 'MOON') && (
           <button
             onClick={view === 'SURFACE' ? exitSurface : exitMoon}
-            className="group relative px-6 py-2.5 bg-slate-900/80 text-cyan-400 text-xs font-bold uppercase tracking-widest border border-cyan-500/40 rounded-md backdrop-blur-md transition-all hover:bg-cyan-400/20 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(34,211,238,0.4)]"
+            className="group relative px-3 sm:px-6 py-2 sm:py-2.5 bg-slate-900/80 text-cyan-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest border border-cyan-500/40 rounded-md backdrop-blur-md transition-all hover:bg-cyan-400/20 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(34,211,238,0.4)]"
           >
             <span className="relative z-10 flex items-center gap-2">
               <svg
-                className="w-3.5 h-3.5"
+                className="w-3 sm:w-3.5 h-3 sm:h-3.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -97,7 +97,8 @@ export const UIOverlay: React.FC = () => {
                   d="M10 19l-7-7m0 0l7-7m-7 7h18"
                 />
               </svg>
-              Return to Orbit
+              <span className="hidden xs:inline">Return to Orbit</span>
+              <span className="xs:hidden">Orbit</span>
             </span>
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-md" />
           </button>
@@ -107,28 +108,24 @@ export const UIOverlay: React.FC = () => {
       {/* Footer */}
       <div className="flex items-end justify-between pointer-events-auto">
         {/* Info text */}
-        <div className="max-w-md bg-slate-900/80 backdrop-blur-sm border border-slate-700/30 rounded-lg p-4">
-          <p className="text-slate-300 text-sm leading-relaxed">
-            {view === 'SURFACE' ? (
-              <>
-                {/* <span className="text-cyan-400 font-semibold">Surface Operations Active.</span>{' '} */}
-                {/* Monitor facility structures and their real-time telemetry data. Tap on
-                structures to inspect detailed metrics. */}
-              </>
-            ) : view === 'MOON' ? (
-              <>
-                <span className="text-cyan-400 font-semibold">Lunar Analysis Active.</span>{' '}
-                Scanning surface composition and orbital trajectory.
-              </>
-            ) : (
-              <>
-                <span className="text-cyan-400 font-semibold">Orbital Scan Mode.</span>{' '}
-                Select a node beacon to initiate surface descent and access ground-level
-                facility operations.
-              </>
-            )}
-          </p>
-        </div>
+        {view !== 'SURFACE' && (
+          <div className="max-w-md bg-slate-900/80 backdrop-blur-sm border border-slate-700/30 rounded-lg p-4">
+            <p className="text-slate-300 text-sm leading-relaxed">
+              {view === 'MOON' ? (
+                <>
+                  <span className="text-cyan-400 font-semibold">Lunar Analysis Active.</span>{' '}
+                  Scanning surface composition and orbital trajectory.
+                </>
+              ) : (
+                <>
+                  <span className="text-cyan-400 font-semibold">Orbital Scan Mode.</span>{' '}
+                  Select a node beacon to initiate surface descent and access ground-level
+                  facility operations.
+                </>
+              )}
+            </p>
+          </div>
+        )}
 
       </div>
 

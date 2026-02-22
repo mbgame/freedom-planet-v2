@@ -20,6 +20,9 @@ const config: Config = {
         slideIn: 'slideIn 0.3s ease-out forwards',
         pulseGlow: 'pulseGlow 2s ease-in-out infinite',
       },
+      screens: {
+        'xs': '480px',
+      },
       keyframes: {
         scan: {
           '0%': { transform: 'translateY(-100%)' },
