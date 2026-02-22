@@ -2,6 +2,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
+import { useProgress } from '@react-three/drei';
 
 export const CameraRig: React.FC = () => {
   const { camera, gl, size } = useThree();
@@ -11,6 +12,7 @@ export const CameraRig: React.FC = () => {
   const enterSurface = useGameStore(state => state.enterSurface);
   const nextMoon = useGameStore(state => state.nextMoon);
   const prevMoon = useGameStore(state => state.prevMoon);
+  const { active: assetsLoading } = useProgress();
 
   const isDragging = useRef(false);
   const startTouchX = useRef(0);
@@ -92,8 +94,9 @@ export const CameraRig: React.FC = () => {
       camera.position.lerp(targetPos, lerpSpeed);
       camera.lookAt(selectedNode.position);
 
-      // Check if transition is complete
-      if (camera.position.distanceTo(targetPos) < 0.3) {
+      // Check if transition is complete: Camera is close AND assets are not loading
+      // This ensures we stay in Transition VFX until models are ready
+      if (camera.position.distanceTo(targetPos) < 0.4 && !assetsLoading) {
         enterSurface();
       }
     } else if (view === 'SURFACE' && selectedNode) {
@@ -109,14 +112,11 @@ export const CameraRig: React.FC = () => {
       const baseHeight = 1.8;
 
       // Add "breathing" and navigation offsets to the distance and angles
-      // We calculate a vector in the structure's "front" space
       const angleOffset = navOffset * 0.1; // Sweep side-to-side with swipe
       const driftX = Math.sin(time * 0.4) * 0.5;
       const driftY = Math.sin(time * 0.2) * 0.1;
       const driftZ = Math.cos(time * 0.3) * 0.2;
 
-      // Calculate world position relative to structure rotation
-      // Standard front is Z+, so we rotate the front vector by rotationY
       const viewAngle = currentStructure.rotationY + angleOffset;
 
       const relX = Math.sin(viewAngle) * (baseDistance + driftZ) + driftX;
@@ -153,22 +153,13 @@ export const CameraRig: React.FC = () => {
       const moonZ = Math.sin(t) * selectedMoon.distance;
       const moonPos = new THREE.Vector3(moonX, 0, moonZ);
 
-      // Camera distance from moon surface
       const distance = selectedMoon.size * 5;
-
-      // Base orientation (looking from "outside" towards the planet)
-      // We calculate a vector that points away from the planet through the moon
       const radialDir = new THREE.Vector3(moonX, 0, moonZ).normalize();
-
-      // Right vector (tangent to orbit)
       const tangentDir = new THREE.Vector3(-Math.sin(t), 0, Math.cos(t));
 
-      // Calculation of rotated camera position relative to moon
-      // Using moonOrbitAngle as local spherical coordinates relative to the radial line
       const theta = moonOrbitAngle.current.theta;
       const phi = moonOrbitAngle.current.phi;
 
-      // Position offset: radial + tangent + vertical
       const offset = radialDir.clone().multiplyScalar(Math.cos(phi) * Math.cos(theta) * distance)
         .add(tangentDir.clone().multiplyScalar(Math.cos(phi) * Math.sin(theta) * distance))
         .add(new THREE.Vector3(0, Math.sin(phi) * distance, 0));
@@ -179,16 +170,13 @@ export const CameraRig: React.FC = () => {
       camera.lookAt(moonPos);
     }
     else if (view === 'ORBIT') {
-      // Orbital view with subtle camera drift
       const time = clock.elapsedTime;
 
-      // Add subtle drift when not dragging
       if (!isDragging.current) {
         driftOffset.current.theta = Math.sin(time * 0.1) * 0.05;
         driftOffset.current.phi = Math.sin(time * 0.07) * 0.02;
       }
 
-      // Adjust camera distance for mobile (portrait mode) to fit moons in screen
       const isPortrait = size.width < size.height;
       const radius = isPortrait ? 13 : 10;
 

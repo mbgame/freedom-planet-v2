@@ -166,18 +166,24 @@ const SurfaceLighting: React.FC = () => {
 };
 
 // Surface scene with terrain and structures
-export const SurfaceScene: React.FC = () => {
-  const selectedNode = useGameStore(state => state.selectedNode);
+export const SurfaceScene: React.FC<{ isPreloading?: boolean }> = ({ isPreloading = false }) => {
+  const nodes = useGameStore(state => state.nodes);
+  const selectedNodeFromStore = useGameStore(state => state.selectedNode);
+
+  // Use either the selected node or the first available node for preloading
+  const selectedNode = selectedNodeFromStore || (isPreloading ? nodes[0] : null);
+
   const nextStructure = useGameStore(state => state.nextStructure);
   const prevStructure = useGameStore(state => state.prevStructure);
-  const focusedStructureIndex = useGameStore(state => state.focusedStructureIndex);
 
   const { gl } = useThree();
   const touchStart = useRef(0);
 
 
-  // Handle swipe gestures
+  // Handle swipe gestures - Only add listeners if NOT preloading
   useEffect(() => {
+    if (isPreloading) return;
+
     const canvas = gl.domElement;
     const setNavigationOffset = useGameStore.getState().setNavigationOffset;
 
@@ -222,7 +228,7 @@ export const SurfaceScene: React.FC = () => {
       canvas.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
-  }, [gl, nextStructure, prevStructure]);
+  }, [gl, nextStructure, prevStructure, isPreloading]);
 
   if (!selectedNode) return null;
 
@@ -241,8 +247,8 @@ export const SurfaceScene: React.FC = () => {
       {/* Ambient particles/stars in background */}
       <StarField count={200} />
 
-      {/* Improved Dynamic Lighting System */}
-      <SurfaceLighting />
+      {/* Improved Dynamic Lighting System - Only active if NOT preloading */}
+      {!isPreloading && <SurfaceLighting />}
     </group>
   );
 };

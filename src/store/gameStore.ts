@@ -50,6 +50,7 @@ interface GameState {
 
   // Loading
   isLoading: boolean;
+  initialLoadComplete: boolean;
   loadingProgress: number;
 
   // Actions
@@ -252,14 +253,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   moons: generateMoons(),
   selectedMoon: null,
   isLoading: true,
+  initialLoadComplete: false,
   loadingProgress: 0,
 
   setView: (view) => set({ view }),
 
   selectNode: (node) => {
     set({ selectedNode: node, view: 'TRANSITION', isTransitioning: true });
-    // Simulate transition time
-    setTimeout(() => set({ isTransitioning: false }), 1500);
   },
 
   enterSurface: () => set({ view: 'SURFACE', isTransitioning: false }),
@@ -270,10 +270,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       selectedNode: null,
       selectedStructure: null,
       focusedStructureIndex: 0,
-      isTransitioning: true
+      isTransitioning: false // No need for transition VFX when going back for now
     });
-    // Reset transition state after orbit return
-    setTimeout(() => set({ isTransitioning: false }), 1500);
   },
 
   nextStructure: () => {
@@ -294,7 +292,20 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setSelectedStructure: (structure) => set({ selectedStructure: structure }),
 
-  setLoading: (loading, progress = 0) => set({ isLoading: loading, loadingProgress: progress }),
+  setLoading: (loading, progress = 0) => {
+    const { initialLoadComplete } = get();
+    // Once initial load is complete, we don't show the loading screen anymore
+    if (initialLoadComplete) {
+      set({ isLoading: false, loadingProgress: 100 });
+      return;
+    }
+
+    if (!loading && progress >= 100) {
+      set({ isLoading: false, initialLoadComplete: true, loadingProgress: 100 });
+    } else {
+      set({ isLoading: loading, loadingProgress: progress });
+    }
+  },
 
   updateStructureStats: (structureId, stats) => {
     const nodes = get().nodes.map(node => ({
@@ -316,13 +327,11 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   focusMoon: (moon) => {
-    set({ selectedMoon: moon, view: 'MOON', isTransitioning: true });
-    setTimeout(() => set({ isTransitioning: false }), 1000);
+    set({ selectedMoon: moon, view: 'MOON', isTransitioning: false });
   },
 
   exitMoon: () => {
-    set({ view: 'ORBIT', selectedMoon: null, isTransitioning: true });
-    setTimeout(() => set({ isTransitioning: false }), 1000);
+    set({ view: 'ORBIT', selectedMoon: null, isTransitioning: false });
   },
 
   nextMoon: () => {
@@ -330,8 +339,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!selectedMoon || moons.length === 0) return;
     const index = moons.findIndex(m => m.id === selectedMoon.id);
     const nextIndex = (index + 1) % moons.length;
-    set({ selectedMoon: moons[nextIndex], view: 'MOON', isTransitioning: true });
-    setTimeout(() => set({ isTransitioning: false }), 1000);
+    set({ selectedMoon: moons[nextIndex], view: 'MOON', isTransitioning: false });
   },
 
   prevMoon: () => {
@@ -339,7 +347,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!selectedMoon || moons.length === 0) return;
     const index = moons.findIndex(m => m.id === selectedMoon.id);
     const prevIndex = (index - 1 + moons.length) % moons.length;
-    set({ selectedMoon: moons[prevIndex], view: 'MOON', isTransitioning: true });
-    setTimeout(() => set({ isTransitioning: false }), 1000);
+    set({ selectedMoon: moons[prevIndex], view: 'MOON', isTransitioning: false });
   }
 }));

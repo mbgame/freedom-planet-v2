@@ -12,6 +12,7 @@ import { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useControls } from 'leva';
 import * as THREE from 'three';
+import { useGLTF } from '@react-three/drei';
 
 const SHOW_CONTROLS = process.env.NEXT_PUBLIC_SHOW_CONTROLS === 'true';
 
@@ -23,13 +24,20 @@ const DEFAULT_LIGHT_VALUES = {
   directPosition: { x: 10, y: 10, z: 5 },
 };
 
+// Preload structure models
+const preloadModels = () => {
+  useGLTF.preload('/models/robotic building.glb');
+  useGLTF.preload('/models/farming lab.glb');
+  useGLTF.preload('/models/polymer.glb');
+};
+
 const NodesRotationWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const ref = useRef<THREE.Group>(null);
   const view = useGameStore(state => state.view);
 
   useFrame((_, delta) => {
     if (ref.current) {
-      const rotationSpeed = view === 'ORBIT' ? 0.05 : 0.01;
+      const rotationSpeed = (view === 'ORBIT' || view === 'TRANSITION') ? 0.05 : 0.01;
       ref.current.rotation.y += delta * rotationSpeed;
     }
   });
@@ -39,7 +47,12 @@ const NodesRotationWrapper: React.FC<{ children: React.ReactNode }> = ({ childre
 
 export const SceneManager: React.FC = () => {
   const view = useGameStore(state => state.view);
-  const setLoading = useGameStore(state => state.setLoading);
+  const selectedNode = useGameStore(state => state.selectedNode);
+
+  // Trigger preloading immediately on mount
+  useEffect(() => {
+    preloadModels();
+  }, []);
 
   const { ambientIntensity, ambientColor, directIntensity, directColor, directPosition } = useControls('Scene Lighting', {
     ambientIntensity: { value: DEFAULT_LIGHT_VALUES.ambientIntensity, min: 0, max: 2, step: 0.1 },
@@ -49,14 +62,11 @@ export const SceneManager: React.FC = () => {
     directPosition: DEFAULT_LIGHT_VALUES.directPosition,
   }, { collapsed: true });
 
-  // Loading is now handled by the LoadingScreen component using useProgress()
-
-
   return (
     <>
       <CameraRig />
 
-      {/* Lighting setup - Only for Orbit/Moon views */}
+      {/* Lighting setup - Only for Orbit/Moon/Transition views */}
       {view !== 'SURFACE' && (
         <>
           <ambientLight intensity={ambientIntensity} color={ambientColor} />
@@ -70,6 +80,7 @@ export const SceneManager: React.FC = () => {
           />
         </>
       )}
+
       {/* Render based on view state */}
       {view !== 'SURFACE' ? (
         <>
@@ -78,6 +89,23 @@ export const SceneManager: React.FC = () => {
           <NodesRotationWrapper>
             <Nodes />
           </NodesRotationWrapper>
+
+          {/* 
+            Always mount SurfaceScene invisibly from the very beginning.
+            This ensures that during the initial Loading Screen, 
+            Three.js/Drei will catch all surface models and terrain textures
+            and include them in the initial progress percentage.
+          */}
+          <group visible={false} position={[5000, 5000, 5000]}>
+            <SurfaceScene isPreloading={true} />
+          </group>
+
+          {/* Special case for actual transition: mount precisely what we need */}
+          {view === 'TRANSITION' && selectedNode && (
+            <group visible={false}>
+              <SurfaceScene />
+            </group>
+          )}
         </>
       ) : (
         <SurfaceScene />

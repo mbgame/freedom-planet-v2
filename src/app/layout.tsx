@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import dynamic from 'next/dynamic';
 import './globals.css';
+import { SWRegister } from '@/components/ui/SWRegister';
 
 // Client-side only Leva controller
 const ClientLeva = dynamic(() => import('@/components/ui/ClientLeva').then(mod => mod.ClientLeva), { ssr: false });
@@ -29,6 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <body className={inter.className}>
+        <SWRegister />
         <ClientLeva hidden={process.env.NEXT_PUBLIC_SHOW_CONTROLS !== 'true'} />
         {children}
       </body>
