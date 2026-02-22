@@ -102,7 +102,7 @@ export const CloudLayer: React.FC = () => {
 
     useFrame((_, delta) => {
         if (meshRef.current) {
-            meshRef.current.rotation.y += delta * 0.02; // Slower, more majestic rotation
+            meshRef.current.rotation.y += delta * 0.05; // Slower, more majestic rotation
         }
     });
 
@@ -213,7 +213,7 @@ export const Planet: React.FC = () => {
     useFrame((_, delta) => {
         if (meshRef.current) {
             // Rotation logic
-            const rotationSpeed = view === 'ORBIT' ? 0.05 : 0.01;
+            const rotationSpeed = view === 'ORBIT' ? 0.09 : 0.01;
             meshRef.current.rotation.y += delta * rotationSpeed;
         }
     });

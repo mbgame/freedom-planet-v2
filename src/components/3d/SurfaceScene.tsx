@@ -1,10 +1,14 @@
 'use client';
 import { useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
-import { useThree } from '@react-three/fiber';
+import { useThree, useFrame } from '@react-three/fiber';
 import { useGameStore } from '@/store/gameStore';
 import { Structure } from './Structure';
 import { getTerrainWorldHeight } from '@/utils/terrain';
+import { TerrainGround } from './TerrainGround';
+import { SkyboxHDR } from './Skyboxhdr';
+import { ProceduralSky } from './ProceduralSky';
+import { Environment } from '@react-three/drei';
 
 // Optimized StarField with instancing
 export const StarField: React.FC<{ count?: number }> = ({ count = 3000 }) => {
@@ -48,47 +52,116 @@ export const StarField: React.FC<{ count?: number }> = ({ count = 3000 }) => {
 };
 
 // Procedural terrain ground with improved variation
-const TerrainGround: React.FC = () => {
-  const meshRef = useRef<THREE.Mesh>(null);
+// const TerrainGround: React.FC = () => {
+//   const meshRef = useRef<THREE.Mesh>(null);
 
-  const geometry = useMemo(() => {
-    const size = 60;
-    const segments = 48; // keep low for mobile
-    const geo = new THREE.PlaneGeometry(size, size, segments, segments);
-    geo.rotateX(-Math.PI / 2);
+//   const geometry = useMemo(() => {
+//     const size = 60;
+//     const segments = 48; // keep low for mobile
+//     const geo = new THREE.PlaneGeometry(size, size, segments, segments);
+//     geo.rotateX(-Math.PI / 2);
 
-    const pos = geo.attributes.position;
-    const colors = new Float32Array(pos.count * 3);
+//     const pos = geo.attributes.position;
+//     const colors = new Float32Array(pos.count * 3);
 
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const z = pos.getZ(i);
+//     for (let i = 0; i < pos.count; i++) {
+//       const x = pos.getX(i);
+//       const z = pos.getZ(i);
 
-      // Get world height from shared utility
-      const h = getTerrainWorldHeight(x, z);
-      pos.setY(i, h);
+//       // Get world height from shared utility
+//       const h = getTerrainWorldHeight(x, z);
+//       pos.setY(i, h);
 
-      // Vertex colors: Brighter rocky surface with detail noise
-      const noise = (Math.sin(x * 5.0) * Math.cos(z * 5.0)) * 0.1;
-      const brightness = 0.15 + (Math.abs(h) * 0.1) + noise;
-      colors[i * 3] = brightness * 0.6;     // R
-      colors[i * 3 + 1] = brightness * 0.7; // G
-      colors[i * 3 + 2] = brightness * 1.0; // B
+//       // Vertex colors: Brighter rocky surface with detail noise
+//       const noise = (Math.sin(x * 5.0) * Math.cos(z * 5.0)) * 0.1;
+//       const brightness = 0.15 + (Math.abs(h) * 0.1) + noise;
+//       colors[i * 3] = brightness * 0.6;     // R
+//       colors[i * 3 + 1] = brightness * 0.7; // G
+//       colors[i * 3 + 2] = brightness * 1.0; // B
+//     }
+
+//     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+//     geo.computeVertexNormals();
+//     return geo;
+//   }, []);
+
+//   return (
+//     <mesh ref={meshRef} geometry={geometry} receiveShadow>
+//       <meshStandardMaterial
+//         vertexColors
+//         roughness={0.9}
+//         metalness={0.1}
+//       />
+//     </mesh>
+//   );
+// };
+
+// Surface Lighting component that follows the focused object
+const SurfaceLighting: React.FC = () => {
+  const selectedNode = useGameStore(state => state.selectedNode);
+  const focusedStructureIndex = useGameStore(state => state.focusedStructureIndex);
+  const lightRef = useRef<THREE.PointLight>(null);
+  const targetPos = useRef(new THREE.Vector3());
+
+  useFrame((_state, delta) => {
+    if (selectedNode && lightRef.current) {
+      const structures = selectedNode.structures;
+      const current = structures[focusedStructureIndex] || structures[0];
+
+      if (current) {
+        // Position light slightly above and in front of the focused structure
+        targetPos.current.set(
+          current.position[0],
+          current.position[1] + 4,
+          current.position[2]
+        );
+        lightRef.current.position.lerp(targetPos.current, delta * 3);
+      }
     }
-
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    geo.computeVertexNormals();
-    return geo;
-  }, []);
+  });
 
   return (
-    <mesh ref={meshRef} geometry={geometry} receiveShadow>
-      <meshStandardMaterial
-        vertexColors
-        roughness={0.9}
-        metalness={0.1}
+    <>
+      {/* Atmosphere-aware ambient fill */}
+      <hemisphereLight
+        intensity={0.6}
+        color="#4bbfff"
+        groundColor="#1e293b"
       />
-    </mesh>
+
+      {/* Main sun source with optimized shadows for mobile */}
+      <directionalLight
+        position={[20, 15, 10]}
+        intensity={2.2}
+        color="#ffffff"
+        castShadow
+        shadow-mapSize={[512, 512]}
+        shadow-camera-far={50}
+        shadow-camera-left={-15}
+        shadow-camera-right={15}
+        shadow-camera-top={15}
+        shadow-camera-bottom={-15}
+      />
+
+      {/* rim/fill light to ensure silhouettes aren't crushed */}
+      <directionalLight
+        position={[-10, 5, -10]}
+        intensity={0.4}
+        color="#00ffff"
+      />
+
+      {/* Dynamic light that tracks the active model to ensure it's always clear */}
+      <pointLight
+        ref={lightRef}
+        intensity={1.8}
+        distance={20}
+        decay={1.5}
+        color="#ffffff"
+      />
+
+      {/* PBR Environmental lighting - Essential for MeshStandardMaterial sheen */}
+      <Environment preset="night" />
+    </>
   );
 };
 
@@ -157,6 +230,8 @@ export const SurfaceScene: React.FC = () => {
     <group>
       {/* Procedural terrain ground */}
       <TerrainGround />
+      {/* <SkyboxHDR /> */}
+      <ProceduralSky />
 
       {/* Render structures from selected node */}
       {selectedNode.structures.map((structure) => (
@@ -166,16 +241,8 @@ export const SurfaceScene: React.FC = () => {
       {/* Ambient particles/stars in background */}
       <StarField count={200} />
 
-      {/* Surface Lighting - Dramatic side-lighting for terrain depth */}
-      <ambientLight intensity={0.2} color="#4bbfff" />
-      <directionalLight
-        position={[10, 5, 5]}
-        intensity={2.5}
-        color="#ffffff"
-        castShadow
-      />
-      {/* Subtle cyan point light for structure focus */}
-      <pointLight position={[0, 5, 0]} intensity={1.5} color="#00ffff" />
+      {/* Improved Dynamic Lighting System */}
+      <SurfaceLighting />
     </group>
   );
 };
