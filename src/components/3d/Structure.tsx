@@ -82,7 +82,7 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
         <mesh
           ref={ringRef}
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, 0.05, 0]}
+          position={[0, 0.1, 0]}
         >
           <ringGeometry args={[1.4, 1.5, 64]} />
           <meshBasicMaterial
@@ -99,7 +99,7 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
         <mesh
           ref={glowRef}
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, 0.04, 0]}
+          position={[0, 0.1, 0]}
         >
           <circleGeometry args={[1.5, 32]} />
           <meshBasicMaterial
@@ -163,17 +163,17 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
       {/* Base platform foundation - improved to handle sloped terrain */}
       <group position={[0, 0.01, 0]}>
         {/* Foundation "Plug" to handle sloped terrain gaps */}
-        <mesh position={[0, -0.25, 0]}>
+        {/* <mesh position={[0, -0.25, 0]}>
           <cylinderGeometry args={[0.9, 0.9, 0.5, 32]} />
           <meshStandardMaterial
             color="#0f172a"
             metalness={0.6}
             roughness={0.4}
           />
-        </mesh>
+        </mesh> */}
 
         {/* Top platform flange */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        {/* <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <circleGeometry args={[0.95, 32]} />
           <meshStandardMaterial
             color="#1e293b"
@@ -182,7 +182,7 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
             roughness={0.5}
             metalness={0.3}
           />
-        </mesh>
+        </mesh> */}
       </group>
 
     </group>
