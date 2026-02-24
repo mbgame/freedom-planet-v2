@@ -135,13 +135,48 @@ export const CameraRig: React.FC = () => {
         currentStructure.position[2]
       );
 
-      // Smoothly move camera towards target
-      camera.position.lerp(targetPosition.current, lerpSpeed);
-
       // Smoothly rotate camera towards structure
       if (!camera.userData.currentLookAt) {
         camera.userData.currentLookAt = targetLookAt.current.clone();
       }
+
+      if (state.isFocusingHeroes) {
+        // Find the barracks that owns these heroes
+        const targetStructure = state.focusedHeroesStructureId
+          ? state.nodes.flatMap(n => n.structures).find(s => s.id === state.focusedHeroesStructureId)
+          : currentStructure;
+
+        if (targetStructure) {
+          const spawnedHeroes = state.spawnedHeroes.filter(h => h.structureId === targetStructure.id);
+          const focusedHero = spawnedHeroes[state.focusedHeroIndex];
+
+          let focusPoint = new THREE.Vector3();
+          if (focusedHero) {
+            focusPoint.set(...focusedHero.position);
+          } else if (spawnedHeroes.length > 0) {
+            // Fallback to first hero if index is invalid
+            focusPoint.set(...spawnedHeroes[0].position);
+          } else {
+            // Fallback to the spawn point in front of barracks
+            const offset = 4;
+            const angle = targetStructure.rotationY;
+            const x = targetStructure.position[0] + Math.sin(angle) * offset;
+            const z = targetStructure.position[2] + Math.cos(angle) * offset;
+            focusPoint.set(x, targetStructure.position[1] + 1, z);
+          }
+
+          // Camera position: Close to individual hero
+          const camOffset = 3.5;
+          const camAngle = targetStructure.rotationY;
+          const camX = focusPoint.x + Math.sin(camAngle) * camOffset;
+          const camZ = focusPoint.z + Math.cos(camAngle) * camOffset;
+
+          targetPosition.current.set(camX, focusPoint.y + 1.2, camZ);
+          targetLookAt.current.copy(focusPoint).add(new THREE.Vector3(0, 0.6, 0));
+        }
+      }
+
+      camera.position.lerp(targetPosition.current, lerpSpeed);
       camera.userData.currentLookAt.lerp(targetLookAt.current, lerpSpeed);
       camera.lookAt(camera.userData.currentLookAt);
     }

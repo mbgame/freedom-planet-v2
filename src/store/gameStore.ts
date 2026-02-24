@@ -22,7 +22,7 @@ export interface StructureStat {
 
 export interface StructureData {
   id: string;
-  type: 'Polymer Plants' | 'Robotics Workshop' | 'Aeroponic Farms';
+  type: 'Polymer Plants' | 'Robotics Workshop' | 'Aeroponic Farms' | 'Barracks';
   position: [number, number, number];
   rotationY: number;
   stats: StructureStat[];
@@ -73,6 +73,37 @@ interface GameState {
   exitMoon: () => void;
   nextMoon: () => void;
   prevMoon: () => void;
+  heroes: HeroData[];
+  spawnedHeroes: SpawnedHero[];
+  activeGenerations: Record<string, ActiveGeneration>;
+  selectedHeroDetail: HeroData | null;
+
+  startGeneration: (heroId: string, structureId: string) => void;
+  cancelGeneration: (structureId: string) => void;
+  spawnHero: (heroId: string, structureId: string) => void;
+  setSelectedHeroDetail: (hero: HeroData | null) => void;
+  setIsFocusingHeroes: (focus: boolean, structureId?: string | null) => void;
+  nextFocusedHero: () => void;
+  prevFocusedHero: () => void;
+  isFocusingHeroes: boolean;
+  focusedHeroesStructureId: string | null;
+  focusedHeroIndex: number;
+}
+
+export interface HeroData {
+  id: string;
+  name: string;
+  image: string;
+  iconIndex: number; // 0-8 for 3x3 sprite
+  level: number;
+  duration: number;
+  isActive: boolean;
+  attack: number;
+  defense: number;
+  specialAttack: number;
+  movementSpeed: number;
+  hp: number;
+  abilities: string[];
 }
 
 // Sample data - in production this would come from an API
@@ -119,7 +150,12 @@ const generateNodes = (): NodeData[] => {
     const SPAWN_RANGE = 40;
 
     for (let j = 0; j < structureCount; j++) {
-      const types: ('Polymer Plants' | 'Robotics Workshop' | 'Aeroponic Farms')[] = ['Polymer Plants', 'Robotics Workshop', 'Aeroponic Farms'];
+      const types: ('Polymer Plants' | 'Robotics Workshop' | 'Aeroponic Farms' | 'Barracks')[] = [
+        'Polymer Plants',
+        'Robotics Workshop',
+        'Aeroponic Farms',
+        'Barracks'
+      ];
       const type = types[Math.floor(Math.random() * types.length)];
 
       let xPos = 0;
@@ -237,10 +273,143 @@ const generateStatsForType = (type: string): StructureStat[] => {
         { label: 'BOTS', value: `${10 + Math.floor(Math.random() * 20)} Units`, status: 'good' },
         { label: 'QUEUE', value: `${Math.floor(Math.random() * 5)} Pending`, status: 'good' },
       ];
+    case 'Barracks':
+      return [
+        { label: 'GARRISON', value: `${20 + Math.floor(Math.random() * 80)}%`, status: 'good' },
+        { label: 'MORALE', value: 'HIGH', status: 'good' },
+        { label: 'TRAINING', value: 'ACTIVE', status: 'good' },
+      ];
     default:
       return [];
   }
 };
+
+export interface HeroAbility {
+  name: string;
+  description: string;
+}
+
+export interface HeroData {
+  id: string;
+  name: string;
+  image: string;
+  level: number;
+  duration: number; // in seconds
+  isActive: boolean;
+  attack: number;
+  defense: number;
+  specialAttack: number;
+  movementSpeed: number;
+  hp: number;
+  abilities: string[];
+}
+
+export interface SpawnedHero {
+  id: string;
+  heroId: string;
+  structureId: string;
+  position: [number, number, number];
+  spawnedAt: number;
+}
+
+export interface ActiveGeneration {
+  heroId: string;
+  startTime: number;
+  duration: number;
+}
+
+const HERO_MOCK_DATA: HeroData[] = [
+  {
+    id: 'hero-1',
+    name: 'Neon Blade',
+    image: '/images/heroes/heroes.png',
+    iconIndex: 0,
+    level: 1,
+    duration: 120,
+    isActive: true,
+    attack: 85,
+    defense: 45,
+    specialAttack: 70,
+    movementSpeed: 90,
+    hp: 120,
+    abilities: ['Quantum Slash', 'Speed Burst', 'Digital Cloak']
+  },
+  {
+    id: 'hero-2',
+    name: 'Iron Shield',
+    image: '/images/heroes/heroes.png',
+    iconIndex: 1,
+    level: 1,
+    duration: 120,
+    isActive: true,
+    attack: 40,
+    defense: 95,
+    specialAttack: 30,
+    movementSpeed: 40,
+    hp: 250,
+    abilities: ['Aegis Wall', 'Taunt', 'Counter-Strike']
+  },
+  {
+    id: 'hero-3',
+    name: 'Pulse Mage',
+    image: '/images/heroes/heroes.png',
+    iconIndex: 2,
+    level: 2,
+    duration: 240,
+    isActive: true,
+    attack: 60,
+    defense: 35,
+    specialAttack: 95,
+    movementSpeed: 65,
+    hp: 100,
+    abilities: ['Arcane Overload', 'Mana Shield', 'Teleport']
+  },
+  {
+    id: 'hero-4',
+    name: 'Shadow Scout',
+    image: '/images/heroes/heroes.png',
+    iconIndex: 3,
+    level: 3,
+    duration: 360,
+    isActive: false,
+    attack: 75,
+    defense: 30,
+    specialAttack: 65,
+    movementSpeed: 100,
+    hp: 90,
+    abilities: ['Assassinate', 'Ambush', 'Smoke Screen']
+  },
+  {
+    id: 'hero-5',
+    name: 'Titan',
+    image: '/images/heroes/heroes.png',
+    iconIndex: 4,
+    level: 5,
+    duration: 600,
+    isActive: false,
+    attack: 70,
+    defense: 75,
+    specialAttack: 50,
+    movementSpeed: 30,
+    hp: 400,
+    abilities: ['Earthquake', 'Titan\'s Grip', 'Unstoppable']
+  },
+  {
+    id: 'hero-6',
+    name: 'Nova',
+    image: '/images/heroes/heroes.png',
+    iconIndex: 5,
+    level: 4,
+    duration: 480,
+    isActive: false,
+    attack: 50,
+    defense: 40,
+    specialAttack: 100,
+    movementSpeed: 70,
+    hp: 110,
+    abilities: ['Supernova', 'Stellar Flare', 'Cosmic Shield']
+  }
+];
 
 export const useGameStore = create<GameState>((set, get) => ({
   view: 'ORBIT',
@@ -255,6 +424,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   isLoading: true,
   initialLoadComplete: false,
   loadingProgress: 0,
+  heroes: HERO_MOCK_DATA,
+  spawnedHeroes: [],
+  activeGenerations: {},
+  selectedHeroDetail: null,
+  isFocusingHeroes: false,
+  focusedHeroesStructureId: null,
+  focusedHeroIndex: 0,
 
   setView: (view) => set({ view }),
 
@@ -270,7 +446,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       selectedNode: null,
       selectedStructure: null,
       focusedStructureIndex: 0,
-      isTransitioning: false // No need for transition VFX when going back for now
+      isTransitioning: false,
+      isFocusingHeroes: false,
+      focusedHeroesStructureId: null
     });
   },
 
@@ -290,7 +468,10 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setNavigationOffset: (offset) => set({ navigationOffset: offset }),
 
-  setSelectedStructure: (structure) => set({ selectedStructure: structure }),
+  setSelectedStructure: (structure) => set((state) => ({
+    selectedStructure: structure,
+    isFocusingHeroes: structure ? false : state.isFocusingHeroes
+  })),
 
   setLoading: (loading, progress = 0) => {
     const { initialLoadComplete } = get();
@@ -348,5 +529,91 @@ export const useGameStore = create<GameState>((set, get) => ({
     const index = moons.findIndex(m => m.id === selectedMoon.id);
     const prevIndex = (index - 1 + moons.length) % moons.length;
     set({ selectedMoon: moons[prevIndex], view: 'MOON', isTransitioning: false });
+  },
+
+  startGeneration: (heroId, structureId) => {
+    const hero = get().heroes.find(h => h.id === heroId);
+    if (!hero) return;
+
+    set(state => ({
+      activeGenerations: {
+        ...state.activeGenerations,
+        [structureId]: {
+          heroId,
+          startTime: Date.now(),
+          duration: hero.duration
+        }
+      }
+    }));
+  },
+
+  cancelGeneration: (structureId) => {
+    set(state => {
+      const newGenerations = { ...state.activeGenerations };
+      delete newGenerations[structureId];
+      return { activeGenerations: newGenerations };
+    });
+  },
+
+  spawnHero: (heroId, structureId) => {
+    const { nodes, activeGenerations } = get();
+    const structure = nodes.flatMap(n => n.structures).find(s => s.id === structureId);
+    if (!structure) return;
+
+    // Layout heroes in a staggered arc to prevent overlap from frontal view
+    const count = get().spawnedHeroes.filter(h => h.structureId === structureId).length;
+    const offset = 4;
+    const angle = structure.rotationY;
+
+    // Spread them laterally (X-axis relative to structure face)
+    const lateralSpread = (count % 4 - 1.5) * 3;
+    // Stagger depth slightly so they aren't in a perfect line
+    const depthStagger = (Math.floor(count / 4)) * 2 + (count % 2) * 0.5;
+
+    // Calculate final position using rotation
+    const finalX = structure.position[0] + Math.sin(angle) * (offset + depthStagger) + Math.cos(angle) * lateralSpread;
+    const finalZ = structure.position[2] + Math.cos(angle) * (offset + depthStagger) - Math.sin(angle) * lateralSpread;
+    const finalY = getTerrainWorldHeight(finalX, finalZ);
+
+    const newSpawn: SpawnedHero = {
+      id: `spawn-${Date.now()}`,
+      heroId,
+      structureId,
+      position: [finalX, finalY, finalZ],
+      spawnedAt: Date.now()
+    };
+
+    set(state => {
+      const newGenerations = { ...state.activeGenerations };
+      delete newGenerations[structureId];
+      return {
+        spawnedHeroes: [...state.spawnedHeroes, newSpawn],
+        activeGenerations: newGenerations
+      };
+    });
+  },
+
+  setSelectedHeroDetail: (hero) => set({ selectedHeroDetail: hero }),
+
+  setIsFocusingHeroes: (focus, structureId = null) => set({
+    isFocusingHeroes: focus,
+    focusedHeroesStructureId: structureId,
+    focusedHeroIndex: 0
+  }),
+
+  nextFocusedHero: () => {
+    const { spawnedHeroes, focusedHeroesStructureId, focusedHeroIndex } = get();
+    if (!focusedHeroesStructureId) return;
+    const heroesCount = spawnedHeroes.filter(h => h.structureId === focusedHeroesStructureId).length;
+    if (heroesCount === 0) return;
+    set({ focusedHeroIndex: (focusedHeroIndex + 1) % heroesCount });
+  },
+
+  prevFocusedHero: () => {
+    const { spawnedHeroes, focusedHeroesStructureId, focusedHeroIndex } = get();
+    if (!focusedHeroesStructureId) return;
+    const heroesCount = spawnedHeroes.filter(h => h.structureId === focusedHeroesStructureId).length;
+    if (heroesCount === 0) return;
+    set({ focusedHeroIndex: (focusedHeroIndex - 1 + heroesCount) % heroesCount });
   }
 }));

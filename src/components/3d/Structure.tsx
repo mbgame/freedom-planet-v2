@@ -5,6 +5,26 @@ import * as THREE from 'three';
 import { useGameStore, type StructureData } from '@/store/gameStore';
 import { DataLabel } from './DataLabel';
 
+const ProgressBarMesh: React.FC<{ currentGen: any; width: number }> = ({ currentGen, width }) => {
+  const barRef = useRef<THREE.Mesh>(null);
+
+  useFrame(() => {
+    if (barRef.current) {
+      const elapsed = ((Date.now() - currentGen.startTime) / 1000) * 10;
+      const progress = Math.min(1, elapsed / currentGen.duration);
+      barRef.current.scale.x = progress;
+      barRef.current.position.x = (progress * width) / 2;
+    }
+  });
+
+  return (
+    <mesh ref={barRef}>
+      <planeGeometry args={[width, 0.1]} />
+      <meshBasicMaterial color="#00ffff" toneMapped={false} />
+    </mesh>
+  );
+};
+
 interface StructureProps {
   data: StructureData;
 }
@@ -28,6 +48,7 @@ const GroundedModel: React.FC<{ modelPath: string; scale?: number }> = ({ modelP
 const RoboticLabModel = () => <GroundedModel modelPath="/models/robotic building.glb" scale={3} />;
 const ExtractorModel = () => <GroundedModel modelPath="/models/farming lab.glb" scale={3} />;
 const GeneratorModel = () => <GroundedModel modelPath="/models/polymer.glb" scale={3} />;
+const BarracksModel = () => <GroundedModel modelPath="/models/barracks.glb" scale={3.5} />;
 
 const ModelFallback = () => (
   <mesh position={[0, 0.75, 0]}>
@@ -127,9 +148,9 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
         >
           {/* 3D Structure Logo - Rotates and swings with the structure */}
           <Text
-            position={[0, 0.8, data.type === 'Robotics Workshop' ? 0.8 : data.type === 'Polymer Plants' ? 0.3 : 0.6]} // Offset forward and slightly up
+            position={[0, data.type === 'Barracks' ? 0.9 : 0.8, data.type === 'Robotics Workshop' ? 0.8 : data.type === 'Polymer Plants' ? 0.3 : data.type === 'Barracks' ? 0.2 : 0.6]} // Offset forward and slightly up
             rotation={[-Math.PI / 12, 0, 0]} // Nearly vertical but tilted for view
-            fontSize={0.1}
+            fontSize={data.type === 'Barracks' ? 0.2 : 0.1}
             color="#ffffff"
             anchorX="center"
             anchorY="middle"
@@ -142,11 +163,42 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
             <meshBasicMaterial color="#00ffff" toneMapped={false} />
           </Text>
 
+          {/* 3D Progress Bar for Barracks Generation */}
+          {(() => {
+            const activeGenerations = useGameStore.getState().activeGenerations;
+            const currentGen = activeGenerations[data.id];
+            if (data.type === 'Barracks' && currentGen) {
+              return (
+                <group position={[0, 1.3, 0.2]}>
+                  {/* Background Bar */}
+                  <mesh>
+                    <planeGeometry args={[1.5, 0.12]} />
+                    <meshBasicMaterial color="#000000" transparent opacity={0.5} />
+                  </mesh>
+                  {/* Progress Bar (Holographic) */}
+                  <mesh position={[-0.75, 0, 0.01]}>
+                    <ProgressBarMesh currentGen={currentGen} width={1.5} />
+                  </mesh>
+                  <Text
+                    position={[0, 0.2, 0]}
+                    fontSize={0.08}
+                    color="#00ffff"
+                    fontWeight={900}
+                  >
+                    UNIT SYNTHESIS IN PROGRESS
+                  </Text>
+                </group>
+              );
+            }
+            return null;
+          })()}
+
           {/* Different geometries based on type */}
           <Suspense fallback={<ModelFallback />}>
             {data.type === 'Aeroponic Farms' && <ExtractorModel />}
             {data.type === 'Polymer Plants' && <GeneratorModel />}
             {data.type === 'Robotics Workshop' && <RoboticLabModel />}
+            {data.type === 'Barracks' && <BarracksModel />}
           </Suspense>
         </group>
 

@@ -29,6 +29,7 @@ const preloadModels = () => {
   useGLTF.preload('/models/robotic building.glb');
   useGLTF.preload('/models/farming lab.glb');
   useGLTF.preload('/models/polymer.glb');
+  useGLTF.preload('/models/barracks.glb');
 };
 
 const NodesRotationWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {

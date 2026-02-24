@@ -1,5 +1,9 @@
-'use client'; import { useEffect, useState } from 'react';
+'use client';
+import { useEffect, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
+import { HeroSelectionPanel } from './HeroSelectionPanel';
+import { HeroDetailOverlay } from './HeroDetailOverlay';
+import { HeroViewControls } from './HeroViewControls';
 
 export const UIOverlay: React.FC = () => {
   const view = useGameStore(state => state.view);
@@ -128,6 +132,15 @@ export const UIOverlay: React.FC = () => {
         )}
 
       </div>
+
+      {/* Hero Detail Modal */}
+      <HeroDetailOverlay />
+
+      {/* Hero Selection Panel */}
+      <HeroSelectionPanel />
+
+      {/* Hero View Controls */}
+      <HeroViewControls />
 
       {/* Vignette effect */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.5)_100%)] pointer-events-none" />

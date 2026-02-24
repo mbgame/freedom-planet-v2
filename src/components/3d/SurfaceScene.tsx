@@ -9,6 +9,31 @@ import { TerrainGround } from './TerrainGround';
 import { SkyboxHDR } from './Skyboxhdr';
 import { ProceduralSky } from './ProceduralSky';
 import { Environment } from '@react-three/drei';
+import { HeroAvatar } from './HeroAvatar';
+
+// Background hero generation manager - handles spawning even when UI is closed
+const BackgroundGenerationManager: React.FC = () => {
+  const activeGenerations = useGameStore(state => state.activeGenerations);
+  const spawnHero = useGameStore(state => state.spawnHero);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const state = useGameStore.getState();
+
+      Object.entries(state.activeGenerations).forEach(([structureId, gen]) => {
+        const elapsed = ((now - gen.startTime) / 1000) * 10; // 10x speed for testing
+        if (elapsed >= gen.duration) {
+          spawnHero(gen.heroId, structureId);
+        }
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [spawnHero]);
+
+  return null;
+};
 
 // Optimized StarField with instancing
 export const StarField: React.FC<{ count?: number }> = ({ count = 3000 }) => {
@@ -169,6 +194,7 @@ const SurfaceLighting: React.FC = () => {
 export const SurfaceScene: React.FC<{ isPreloading?: boolean }> = ({ isPreloading = false }) => {
   const nodes = useGameStore(state => state.nodes);
   const selectedNodeFromStore = useGameStore(state => state.selectedNode);
+  const spawnedHeroes = useGameStore(state => state.spawnedHeroes);
 
   // Use either the selected node or the first available node for preloading
   const selectedNode = selectedNodeFromStore || (isPreloading ? nodes[0] : null);
@@ -178,25 +204,26 @@ export const SurfaceScene: React.FC<{ isPreloading?: boolean }> = ({ isPreloadin
 
   const { gl } = useThree();
   const touchStart = useRef(0);
-
+  const swipeOccurred = useRef(false);
 
   // Handle swipe gestures - Only add listeners if NOT preloading
   useEffect(() => {
     if (isPreloading) return;
 
     const canvas = gl.domElement;
-    const setNavigationOffset = useGameStore.getState().setNavigationOffset;
 
     const onDown = (e: PointerEvent) => {
       touchStart.current = e.clientX;
+      swipeOccurred.current = false;
       canvas.setPointerCapture(e.pointerId);
     };
 
     const onMove = (e: PointerEvent) => {
       if (touchStart.current === 0) return;
       const diff = touchStart.current - e.clientX;
-      // Map pixel diff to a normalized offset for camera movement
-      setNavigationOffset(diff * 0.05);
+      if (Math.abs(diff) > 10) swipeOccurred.current = true;
+      const state = useGameStore.getState();
+      state.setNavigationOffset(diff * 0.05);
     };
 
     const onUp = (e: PointerEvent) => {
@@ -207,16 +234,32 @@ export const SurfaceScene: React.FC<{ isPreloading?: boolean }> = ({ isPreloadin
 
       canvas.releasePointerCapture(e.pointerId);
       touchStart.current = 0;
-      setNavigationOffset(0);
+      const state = useGameStore.getState();
+      state.setNavigationOffset(0);
 
       // Swipe threshold
       if (Math.abs(diff) > 50) {
-        if (diff > 0) {
-          nextStructure();
+        if (state.isFocusingHeroes) {
+          // STRICT Focus mode: Only swipe between heroes
+          if (diff > 0) {
+            state.nextFocusedHero();
+          } else {
+            state.prevFocusedHero();
+          }
         } else {
-          prevStructure();
+          // Normal mode: Only navigation between structures
+          if (diff > 0) {
+            state.nextStructure();
+          } else {
+            state.prevStructure();
+          }
         }
       }
+
+      // Short delay to ensure click handlers can check swipeOccurred
+      setTimeout(() => {
+        swipeOccurred.current = false;
+      }, 50);
     };
 
     canvas.addEventListener('pointerdown', onDown);
@@ -228,12 +271,32 @@ export const SurfaceScene: React.FC<{ isPreloading?: boolean }> = ({ isPreloadin
       canvas.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
-  }, [gl, nextStructure, prevStructure, isPreloading]);
+  }, [gl, isPreloading]);
 
   if (!selectedNode) return null;
 
   return (
-    <group>
+    <group
+      onPointerMissed={() => {
+        if (swipeOccurred.current) return;
+        const state = useGameStore.getState();
+        // Only exit modes if we aren't specifically focusing heroes
+        // Hero focus requires explicit 'Exit' button or clicking a different structure
+        if (!state.isFocusingHeroes) {
+          state.setSelectedStructure(null);
+        }
+      }}
+      onClick={(e) => {
+        if (swipeOccurred.current) return;
+        // If clicking exactly the terrain (not a structure which stops propagation)
+        if (e.intersections.length > 0 && e.intersections[0].object.type === 'Mesh') {
+          const state = useGameStore.getState();
+          if (!state.isFocusingHeroes) {
+            state.setSelectedStructure(null);
+          }
+        }
+      }}
+    >
       {/* Procedural terrain ground */}
       <TerrainGround />
       {/* <SkyboxHDR /> */}
@@ -244,8 +307,21 @@ export const SurfaceScene: React.FC<{ isPreloading?: boolean }> = ({ isPreloadin
         <Structure key={structure.id} data={structure} />
       ))}
 
+      {/* Render spawned heroes belonging to this node */}
+      {(() => {
+        const structureIds = new Set(selectedNode.structures.map(s => s.id));
+        return spawnedHeroes
+          .filter(hero => structureIds.has(hero.structureId))
+          .map((hero) => (
+            <HeroAvatar key={hero.id} data={hero} />
+          ));
+      })()}
+
       {/* Ambient particles/stars in background */}
       <StarField count={200} />
+
+      {/* Background Managers */}
+      <BackgroundGenerationManager />
 
       {/* Improved Dynamic Lighting System - Only active if NOT preloading */}
       {!isPreloading && <SurfaceLighting />}
