@@ -213,7 +213,7 @@ export const Planet: React.FC = () => {
     useFrame((_, delta) => {
         if (meshRef.current) {
             // Rotation logic
-            const rotationSpeed = view === 'ORBIT' ? 0.09 : 0.01;
+            const rotationSpeed = (view === 'ORBIT' || view === 'TRANSITION') ? 0.09 : 0.01;
             meshRef.current.rotation.y += delta * rotationSpeed;
         }
     });

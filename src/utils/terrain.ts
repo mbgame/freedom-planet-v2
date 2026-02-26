@@ -3,8 +3,16 @@
  * and structure placement logic.
  */
 
-const TERRAIN_SIZE = 60;
+const TERRAIN_SIZE = 200;
 const TERRAIN_SCALE = 3.5;
+const FADE_START = 68;
+const FADE_WIDTH = 48;
+const SEA_LEVEL = 0.05;
+
+function quinticSmoothstep(edge0: number, edge1: number, x: number): number {
+    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+    return t * t * t * (t * (t * 6 - 15) + 10);
+}
 
 /**
  * Procedural height function based on sine sums.
@@ -22,10 +30,13 @@ export function getBaseHeight(x: number, z: number): number {
  * Calculates the final world Y height for a given X, Z coordinate.
  */
 export function getTerrainWorldHeight(x: number, z: number): number {
-    const halfSize = TERRAIN_SIZE / 2;
-    const dist = Math.sqrt(x * x + z * z) / halfSize;
-    const falloff = Math.max(0, 1 - dist * dist);
-    return getBaseHeight(x, z) * falloff * TERRAIN_SCALE;
+    let h = getBaseHeight(x, z) * TERRAIN_SCALE;
+
+    const dist = Math.sqrt(x * x + z * z);
+    const fade = quinticSmoothstep(FADE_START, FADE_START + FADE_WIDTH, dist);
+    h *= (1 - fade);
+
+    return Math.max(h, SEA_LEVEL);
 }
 
 /**

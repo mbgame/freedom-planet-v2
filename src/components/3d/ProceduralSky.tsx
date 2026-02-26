@@ -23,90 +23,90 @@ import { useFrame } from '@react-three/fiber';
 // ─── Preset system ────────────────────────────────────────────────────────────
 
 export type SkyConfig = {
-    label: string;
-    // Sun direction (normalized in shader, just set altitude 0-1 and azimuth 0-1)
-    sunAltitude: number;  // 0 = horizon, 1 = zenith
-    sunAzimuth: number;  // 0..1 maps to 0..2π
-    // Rayleigh scattering colour (defines "sky colour")
-    rayleigh: [number, number, number];
-    // Mie scattering — controls haze/glow around sun
-    mieCoeff: number;
-    // Overall exposure
-    exposure: number;
-    // Cloud params
-    cloudDensity: number; // 0 = clear, 1 = overcast
-    cloudSpeed: number; // cloud drift speed
-    cloudColor: [number, number, number];
-    // Star visibility (0 = none, 1 = full)
-    starIntensity: number;
+  label: string;
+  // Sun direction (normalized in shader, just set altitude 0-1 and azimuth 0-1)
+  sunAltitude: number;  // 0 = horizon, 1 = zenith
+  sunAzimuth: number;  // 0..1 maps to 0..2π
+  // Rayleigh scattering colour (defines "sky colour")
+  rayleigh: [number, number, number];
+  // Mie scattering — controls haze/glow around sun
+  mieCoeff: number;
+  // Overall exposure
+  exposure: number;
+  // Cloud params
+  cloudDensity: number; // 0 = clear, 1 = overcast
+  cloudSpeed: number; // cloud drift speed
+  cloudColor: [number, number, number];
+  // Star visibility (0 = none, 1 = full)
+  starIntensity: number;
 };
 
 export const SKY_CONFIGS: Record<string, SkyConfig> = {
-    alienDay: {
-        label: 'Alien Day',
-        sunAltitude: 0.35,
-        sunAzimuth: 0.22,
-        rayleigh: [0.05, 0.12, 0.55],  // deep blue-violet alien sky
-        mieCoeff: 0.004,
-        exposure: 1.2,
-        cloudDensity: 0.35,
-        cloudSpeed: 0.012,
-        cloudColor: [0.85, 0.82, 0.95],
-        starIntensity: 0.0,
-    },
-    alienDusk: {
-        label: 'Alien Dusk',
-        sunAltitude: 0.04,
-        sunAzimuth: 0.18,
-        rayleigh: [0.35, 0.08, 0.22],  // crimson/magenta horizon
-        mieCoeff: 0.018,
-        exposure: 1.6,
-        cloudDensity: 0.5,
-        cloudSpeed: 0.008,
-        cloudColor: [0.9, 0.5, 0.35],
-        starIntensity: 0.4,
-    },
-    alienNight: {
-        label: 'Alien Night',
-        sunAltitude: -0.12,
-        sunAzimuth: 0.6,
-        rayleigh: [0.02, 0.04, 0.18],  // near-black deep blue
-        mieCoeff: 0.001,
-        exposure: 2.4,
-        cloudDensity: 0.2,
-        cloudSpeed: 0.005,
-        cloudColor: [0.15, 0.18, 0.3],
-        starIntensity: 1.0,
-    },
-    stormyPlanet: {
-        label: 'Stormy Planet',
-        sunAltitude: 0.18,
-        sunAzimuth: 0.45,
-        rayleigh: [0.1, 0.15, 0.2],
-        mieCoeff: 0.04,
-        exposure: 0.9,
-        cloudDensity: 0.85,
-        cloudSpeed: 0.025,
-        cloudColor: [0.4, 0.42, 0.45],
-        starIntensity: 0.0,
-    },
-    goldenWasteland: {
-        label: 'Golden Wasteland',
-        sunAltitude: 0.08,
-        sunAzimuth: 0.3,
-        rayleigh: [0.5, 0.25, 0.04],   // warm amber / orange
-        mieCoeff: 0.025,
-        exposure: 1.3,
-        cloudDensity: 0.3,
-        cloudSpeed: 0.01,
-        cloudColor: [0.95, 0.75, 0.45],
-        starIntensity: 0.15,
-    },
+  alienDay: {
+    label: 'Alien Day',
+    sunAltitude: 0.35,
+    sunAzimuth: 0.22,
+    rayleigh: [0.05, 0.12, 0.55],  // deep blue-violet alien sky
+    mieCoeff: 0.004,
+    exposure: 1.2,
+    cloudDensity: 0.35,
+    cloudSpeed: 0.012,
+    cloudColor: [0.85, 0.82, 0.95],
+    starIntensity: 0.0,
+  },
+  alienDusk: {
+    label: 'Alien Dusk',
+    sunAltitude: 0.04,
+    sunAzimuth: 0.18,
+    rayleigh: [0.35, 0.08, 0.22],  // crimson/magenta horizon
+    mieCoeff: 0.018,
+    exposure: 1.6,
+    cloudDensity: 0.5,
+    cloudSpeed: 0.008,
+    cloudColor: [0.9, 0.5, 0.35],
+    starIntensity: 0.4,
+  },
+  alienNight: {
+    label: 'Alien Night',
+    sunAltitude: -0.12,
+    sunAzimuth: 0.6,
+    rayleigh: [0.02, 0.04, 0.18],  // near-black deep blue
+    mieCoeff: 0.001,
+    exposure: 2.4,
+    cloudDensity: 0.2,
+    cloudSpeed: 0.005,
+    cloudColor: [0.15, 0.18, 0.3],
+    starIntensity: 1.0,
+  },
+  stormyPlanet: {
+    label: 'Stormy Planet',
+    sunAltitude: 0.18,
+    sunAzimuth: 0.45,
+    rayleigh: [0.1, 0.15, 0.2],
+    mieCoeff: 0.04,
+    exposure: 0.9,
+    cloudDensity: 0.85,
+    cloudSpeed: 0.025,
+    cloudColor: [0.4, 0.42, 0.45],
+    starIntensity: 0.0,
+  },
+  goldenWasteland: {
+    label: 'Golden Wasteland',
+    sunAltitude: 0.08,
+    sunAzimuth: 0.3,
+    rayleigh: [0.5, 0.25, 0.04],   // warm amber / orange
+    mieCoeff: 0.025,
+    exposure: 1.3,
+    cloudDensity: 0.3,
+    cloudSpeed: 0.01,
+    cloudColor: [0.95, 0.75, 0.45],
+    starIntensity: 0.15,
+  },
 };
 
 const CONFIG_KEYS = Object.keys(SKY_CONFIGS);
 function pickRandom(): SkyConfig {
-    return SKY_CONFIGS[CONFIG_KEYS[Math.floor(Math.random() * CONFIG_KEYS.length)]];
+  return SKY_CONFIGS[CONFIG_KEYS[Math.floor(Math.random() * CONFIG_KEYS.length)]];
 }
 
 // ─── Shaders ─────────────────────────────────────────────────────────────────
@@ -298,81 +298,81 @@ const frag = /* glsl */`
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface ProceduralSkyProps {
-    config?: string;   // key from SKY_CONFIGS; omit for random-per-mount
-    radius?: number;
-    animated?: boolean;  // animate clouds (default true)
+  config?: string;   // key from SKY_CONFIGS; omit for random-per-mount
+  radius?: number;
+  animated?: boolean;  // animate clouds (default true)
 }
 
 export const ProceduralSky: React.FC<ProceduralSkyProps> = ({
-    config: configKey,
-    radius = 900,
-    animated = true,
+  config: configKey,
+  radius = 900,
+  animated = true,
 }) => {
-    const meshRef = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
 
-    // Pick config once on mount
-    const config = useMemo<SkyConfig>(() => {
-        if (configKey && SKY_CONFIGS[configKey]) return SKY_CONFIGS[configKey];
-        return pickRandom();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+  // Pick config once on mount
+  const config = useMemo<SkyConfig>(() => {
+    if (configKey && SKY_CONFIGS[configKey]) return SKY_CONFIGS[configKey];
+    return pickRandom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    // Compute sun direction from altitude/azimuth
-    const sunDir = useMemo(() => {
-        const alt = config.sunAltitude * Math.PI * 0.5;
-        const az = config.sunAzimuth * Math.PI * 2.0;
-        return new THREE.Vector3(
-            Math.cos(alt) * Math.sin(az),
-            Math.sin(alt),
-            Math.cos(alt) * Math.cos(az),
-        ).normalize();
-    }, [config]);
+  // Compute sun direction from altitude/azimuth
+  const sunDir = useMemo(() => {
+    const alt = config.sunAltitude * Math.PI * 0.5;
+    const az = config.sunAzimuth * Math.PI * 2.0;
+    return new THREE.Vector3(
+      Math.cos(alt) * Math.sin(az),
+      Math.sin(alt),
+      Math.cos(alt) * Math.cos(az),
+    ).normalize();
+  }, [config]);
 
-    // Geometry: inverted sphere
-    const geometry = useMemo(() => {
-        const geo = new THREE.SphereGeometry(radius, 32, 32);
-        geo.scale(-1, 1, 1);
-        return geo;
-    }, [radius]);
+  // Geometry: inverted sphere
+  const geometry = useMemo(() => {
+    const geo = new THREE.SphereGeometry(radius, 32, 32);
+    geo.scale(-1, 1, 1);
+    return geo;
+  }, [radius]);
 
-    // Material
-    const material = useMemo(() => new THREE.ShaderMaterial({
-        vertexShader: vert,
-        fragmentShader: frag,
-        uniforms: {
-            uSunDir: { value: sunDir },
-            uRayleigh: { value: new THREE.Vector3(...config.rayleigh) },
-            uMie: { value: config.mieCoeff },
-            uExposure: { value: config.exposure },
-            uCloudDensity: { value: config.cloudDensity },
-            uCloudSpeed: { value: config.cloudSpeed },
-            uCloudColor: { value: new THREE.Vector3(...config.cloudColor) },
-            uStarIntensity: { value: config.starIntensity },
-            uTime: { value: 0 },
-        },
-        depthWrite: false,
-        depthTest: false,
-        side: THREE.FrontSide,
-    }), [config, sunDir]);
+  // Material
+  const material = useMemo(() => new THREE.ShaderMaterial({
+    vertexShader: vert,
+    fragmentShader: frag,
+    uniforms: {
+      uSunDir: { value: sunDir },
+      uRayleigh: { value: new THREE.Vector3(...config.rayleigh) },
+      uMie: { value: config.mieCoeff },
+      uExposure: { value: config.exposure },
+      uCloudDensity: { value: config.cloudDensity },
+      uCloudSpeed: { value: config.cloudSpeed },
+      uCloudColor: { value: new THREE.Vector3(...config.cloudColor) },
+      uStarIntensity: { value: config.starIntensity },
+      uTime: { value: 0 },
+    },
+    depthWrite: false,
+    depthTest: false,
+    side: THREE.FrontSide,
+  }), [config, sunDir]);
 
-    useFrame(({ camera, clock }) => {
-        if (meshRef.current) {
-            // Follow camera
-            meshRef.current.position.copy(camera.position);
-            // Update time for cloud drift & star twinkle
-            if (animated) {
-                (material.uniforms.uTime as THREE.IUniform).value = clock.getElapsedTime();
-            }
-        }
-    });
+  useFrame(({ camera, clock }) => {
+    if (meshRef.current) {
+      // Follow camera
+      meshRef.current.position.copy(camera.position);
+      // Update time for cloud drift & star twinkle
+      if (animated) {
+        (material.uniforms.uTime as THREE.IUniform).value = clock.getElapsedTime();
+      }
+    }
+  });
 
-    return (
-        <mesh
-            ref={meshRef}
-            geometry={geometry}
-            material={material}
-            renderOrder={-1}
-            frustumCulled={false}
-        />
-    );
+  return (
+    <mesh
+      ref={meshRef}
+      geometry={geometry}
+      material={material}
+      renderOrder={-1}
+      frustumCulled={false}
+    />
+  );
 };

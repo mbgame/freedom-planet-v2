@@ -4,6 +4,7 @@ import { useGLTF, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore, type StructureData } from '@/store/gameStore';
 import { DataLabel } from './DataLabel';
+import { getTerrainWorldHeight } from '@/utils/terrain';
 
 const ProgressBarMesh: React.FC<{ currentGen: any; width: number }> = ({ currentGen, width }) => {
   const barRef = useRef<THREE.Mesh>(null);
@@ -72,8 +73,8 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
 
   // Animation logic
   useFrame(({ clock }, delta) => {
-    // 1. Lift Animation (Relative to terrain height)
-    const targetLift = isSelected ? 0.4 : 0;
+    // 1. Lift Animation - Removed as per request to keep buildings grounded
+    const targetLift = 0;
     animatedY.current = THREE.MathUtils.lerp(animatedY.current, targetLift, delta * 4);
 
     // Apply animations to structure group
@@ -96,8 +97,10 @@ export const Structure: React.FC<StructureProps> = ({ data }) => {
   });
 
 
+  const terrainHeight = useMemo(() => getTerrainWorldHeight(data.position[0], data.position[2]), [data.position]);
+
   return (
-    <group position={[data.position[0], data.position[1], data.position[2]]}>
+    <group position={[data.position[0], terrainHeight, data.position[2]]}>
       {/* Selection ring - placed on ground, not floating with model */}
       {isSelected && (
         <mesh

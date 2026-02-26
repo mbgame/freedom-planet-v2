@@ -8,11 +8,11 @@ import { Nodes } from './Nodes';
 import { SurfaceScene } from './SurfaceScene';
 import { TransitionVFX } from './TransitionVFX';
 import { PostEffects } from './PostEffects';
-import { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useControls } from 'leva';
 import * as THREE from 'three';
-import { useGLTF } from '@react-three/drei';
+import { useGLTF, useTexture } from '@react-three/drei';
 
 const SHOW_CONTROLS = process.env.NEXT_PUBLIC_SHOW_CONTROLS === 'true';
 
@@ -24,12 +24,34 @@ const DEFAULT_LIGHT_VALUES = {
   directPosition: { x: 10, y: 10, z: 5 },
 };
 
-// Preload structure models
-const preloadModels = () => {
+// Preload 3D models and textures
+const preloadAssets = () => {
+  // Models
   useGLTF.preload('/models/robotic building.glb');
   useGLTF.preload('/models/farming lab.glb');
   useGLTF.preload('/models/polymer.glb');
   useGLTF.preload('/models/barracks.glb');
+
+  // Textures - Hero Sprite
+  useTexture.preload('/images/heroes/heroes.png');
+
+  // Textures - Planet
+  useTexture.preload('/textures/planet/daymap.jpg');
+  useTexture.preload('/textures/planet/normal.jpg');
+  useTexture.preload('/textures/planet/specular.jpg');
+  useTexture.preload('/textures/planet/clouds.jpg');
+
+  // Textures - Moons
+  const moonFolders = ['Moon_001_Textures', 'Moon_002_Textures', 'Moon_003_Textures'];
+  const moonPrefixes = ['Moon_001_', 'Moon_002_', 'Moon_003_'];
+  const moonSuffix = '_2048x1024';
+
+  moonFolders.forEach((folder, i) => {
+    const prefix = moonPrefixes[i];
+    useTexture.preload(`/textures/moons/${folder}/${prefix}Albedo${moonSuffix}.png`);
+    useTexture.preload(`/textures/moons/${folder}/${prefix}Normal${moonSuffix}.jpg`);
+    useTexture.preload(`/textures/moons/${folder}/${prefix}Displacement${moonSuffix}.png`);
+  });
 };
 
 const NodesRotationWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -38,7 +60,7 @@ const NodesRotationWrapper: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useFrame((_, delta) => {
     if (ref.current) {
-      const rotationSpeed = (view === 'ORBIT' || view === 'TRANSITION') ? 0.05 : 0.01;
+      const rotationSpeed = (view === 'ORBIT' || view === 'TRANSITION') ? 0.09 : 0.01;
       ref.current.rotation.y += delta * rotationSpeed;
     }
   });
@@ -52,7 +74,7 @@ export const SceneManager: React.FC = () => {
 
   // Trigger preloading immediately on mount
   useEffect(() => {
-    preloadModels();
+    preloadAssets();
   }, []);
 
   const { ambientIntensity, ambientColor, directIntensity, directColor, directPosition } = useControls('Scene Lighting', {

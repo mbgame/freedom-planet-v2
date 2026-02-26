@@ -85,8 +85,8 @@ export const CameraRig: React.FC = () => {
   const targetLookAt = useRef(new THREE.Vector3());
 
   useFrame(({ clock }, delta) => {
-    // Standard lerp speed for camera movement
-    const lerpSpeed = 6.0 * delta;
+    // Smoother, more cinematic lerp speed - reduced for more gradual transitions
+    const lerpSpeed = 4.2 * delta;
 
     if (view === 'TRANSITION' && selectedNode) {
       // Zoom to selected node from orbit
@@ -95,7 +95,6 @@ export const CameraRig: React.FC = () => {
       camera.lookAt(selectedNode.position);
 
       // Check if transition is complete: Camera is close AND assets are not loading
-      // This ensures we stay in Transition VFX until models are ready
       if (camera.position.distanceTo(targetPos) < 0.4 && !assetsLoading) {
         enterSurface();
       }
@@ -107,41 +106,46 @@ export const CameraRig: React.FC = () => {
 
       const time = clock.getElapsedTime();
 
-      // Base camera distance and height
-      const baseDistance = 8.5;
-      const baseHeight = 1.8;
+      // 1. Precise baseline tracking
+      const structY = currentStructure.position[1];
+      const isSelected = !!state.selectedStructure;
 
-      // Add "breathing" and navigation offsets to the distance and angles
-      const angleOffset = navOffset * 0.1; // Sweep side-to-side with swipe
-      const driftX = Math.sin(time * 0.4) * 0.5;
+      // Balanced distance/height for centering - Significantly lowered unselected state
+      const baseDistance = isSelected ? 7.5 : 10.5;
+      const baseHeight = isSelected ? 1.6 : 3.5;
+
+      // 2. Focused centering logic - Remove lateral drift to keep target centered exactly
+      const angleOffset = navOffset * 0.1;
       const driftY = Math.sin(time * 0.2) * 0.1;
-      const driftZ = Math.cos(time * 0.3) * 0.2;
+      const driftDepth = Math.cos(time * 0.3) * 0.2; // Keep depth "breathing" but not side-to-side
 
       const viewAngle = currentStructure.rotationY + angleOffset;
 
-      const relX = Math.sin(viewAngle) * (baseDistance + driftZ) + driftX;
-      const relZ = Math.cos(viewAngle) * (baseDistance + driftZ);
+      // Calculate orbit position - Strictly centered on the structure
+      const relX = Math.sin(viewAngle) * (baseDistance + driftDepth);
+      const relZ = Math.cos(viewAngle) * (baseDistance + driftDepth);
 
       targetPosition.current.set(
         currentStructure.position[0] + relX,
-        currentStructure.position[1] + baseHeight + driftY,
+        structY + baseHeight + driftY,
         currentStructure.position[2] + relZ
       );
 
-      // Calculate the focus point (slightly above the structure)
+      // 3. Dynamic LookAt - Adjusted for lower camera
+      const lookAtHeight = isSelected ? 1.6 : 1.4;
       targetLookAt.current.set(
         currentStructure.position[0],
-        currentStructure.position[1] + 1.2,
+        structY + lookAtHeight,
         currentStructure.position[2]
       );
 
-      // Smoothly rotate camera towards structure
+      // Maintain current lookAt state for smoothing
       if (!camera.userData.currentLookAt) {
         camera.userData.currentLookAt = targetLookAt.current.clone();
       }
 
+      // Apply hero focus overrides if active
       if (state.isFocusingHeroes) {
-        // Find the barracks that owns these heroes
         const targetStructure = state.focusedHeroesStructureId
           ? state.nodes.flatMap(n => n.structures).find(s => s.id === state.focusedHeroesStructureId)
           : currentStructure;
@@ -154,10 +158,8 @@ export const CameraRig: React.FC = () => {
           if (focusedHero) {
             focusPoint.set(...focusedHero.position);
           } else if (spawnedHeroes.length > 0) {
-            // Fallback to first hero if index is invalid
             focusPoint.set(...spawnedHeroes[0].position);
           } else {
-            // Fallback to the spawn point in front of barracks
             const offset = 4;
             const angle = targetStructure.rotationY;
             const x = targetStructure.position[0] + Math.sin(angle) * offset;
@@ -165,7 +167,6 @@ export const CameraRig: React.FC = () => {
             focusPoint.set(x, targetStructure.position[1] + 1, z);
           }
 
-          // Camera position: Close to individual hero
           const camOffset = 3.5;
           const camAngle = targetStructure.rotationY;
           const camX = focusPoint.x + Math.sin(camAngle) * camOffset;
@@ -176,8 +177,10 @@ export const CameraRig: React.FC = () => {
         }
       }
 
+      // 4. Smooth Application - Prioritize LookAt responsiveness to keep target centered during switch
       camera.position.lerp(targetPosition.current, lerpSpeed);
-      camera.userData.currentLookAt.lerp(targetLookAt.current, lerpSpeed);
+      // LookAt lerp is slightly faster (x1.5) to "pull" the building into view during high-speed transitions
+      camera.userData.currentLookAt.lerp(targetLookAt.current, lerpSpeed * 1.5);
       camera.lookAt(camera.userData.currentLookAt);
     }
     else if (view === 'MOON' && selectedMoon) {

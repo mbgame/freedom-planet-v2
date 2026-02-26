@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Text, Float, Billboard } from '@react-three/drei';
+import { Text, Float, Billboard, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore, type SpawnedHero } from '@/store/gameStore';
 
@@ -18,6 +18,27 @@ export const HeroAvatar: React.FC<HeroAvatarProps> = ({ data }) => {
     const beamRef = useRef<THREE.Mesh>(null);
     const beamMatRef = useRef<THREE.MeshBasicMaterial>(null);
     const ringRef = useRef<THREE.Mesh>(null);
+
+    const sharedTexture = useTexture(hero?.image || '/images/heroes/heroes.png');
+
+    // Create a local clone of the texture so UV offsets don't conflict with other heroes
+    const iconTexture = useMemo(() => {
+        if (!sharedTexture || !hero) return null;
+        const tex = sharedTexture.clone();
+        tex.repeat.set(1 / 3, 1 / 3);
+        const column = hero.iconIndex % 3;
+        const row = 2 - Math.floor(hero.iconIndex / 3);
+        tex.offset.set(column / 3, row / 3);
+        tex.needsUpdate = true;
+        return tex;
+    }, [sharedTexture, hero]);
+
+    // Clean up cloned texture on unmount
+    useEffect(() => {
+        return () => {
+            if (iconTexture) iconTexture.dispose();
+        };
+    }, [iconTexture]);
 
     useFrame(({ clock }) => {
         if (ringRef.current) {
@@ -39,15 +60,6 @@ export const HeroAvatar: React.FC<HeroAvatarProps> = ({ data }) => {
     });
 
     if (!hero) return null;
-
-    const iconTexture = useMemo(() => {
-        const tex = new THREE.TextureLoader().load(hero.image);
-        tex.repeat.set(1 / 3, 1 / 3);
-        const column = hero.iconIndex % 3;
-        const row = 2 - Math.floor(hero.iconIndex / 3); // Flip Y as textures are 0 at bottom
-        tex.offset.set(column / 3, row / 3);
-        return tex;
-    }, [hero.image, hero.iconIndex]);
 
     return (
         <group position={data.position}>

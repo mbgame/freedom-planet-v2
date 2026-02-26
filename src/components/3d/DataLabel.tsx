@@ -15,13 +15,13 @@ interface DataLabelProps {
 const getStatusColor = (status: string): string => {
   switch (status) {
     case 'good':
-      return '#00ff41'; // Matrix green
+      return '#00d4ff'; // Tech Cyan
     case 'warning':
-      return '#ffeb3b'; // Bright yellow
+      return '#ffcc00'; // Amber
     case 'critical':
-      return '#ff1744'; // Bright red
+      return '#ff3366'; // Plasma Red
     default:
-      return '#00ff41';
+      return '#00d4ff';
   }
 };
 
@@ -36,8 +36,6 @@ export const DataLabel: React.FC<DataLabelProps> = ({ position, stats, structure
   // Billboard effect and dynamic positioning
   useFrame(({ camera, clock }) => {
     if (groupRef.current) {
-      // 1. Force the label to always face the camera
-      // Account for parent rotation inversion for perfect billboarding
       if (groupRef.current.parent) {
         const parentQuat = new THREE.Quaternion();
         groupRef.current.parent.getWorldQuaternion(parentQuat);
@@ -46,20 +44,17 @@ export const DataLabel: React.FC<DataLabelProps> = ({ position, stats, structure
         groupRef.current.quaternion.copy(camera.quaternion);
       }
 
-      // 2. Animation pop-up effect
       const targetScale = isSelected ? 1 : 0;
       scaleRef.current = THREE.MathUtils.lerp(scaleRef.current, targetScale, 0.15);
       groupRef.current.scale.setScalar(scaleRef.current);
 
-      // 3. Position the label "in front" of the structure's center relative to camera
       const cameraDir = new THREE.Vector3();
       camera.getWorldDirection(cameraDir).negate();
 
       const worldOffset = cameraDir.clone();
       worldOffset.y = 0;
-      worldOffset.normalize().multiplyScalar(1.5);
+      worldOffset.normalize().multiplyScalar(1.8);
 
-      // Convert world-space offset to local-space of the parent
       const localOffset = worldOffset.clone();
       if (groupRef.current.parent) {
         const parentQuat = new THREE.Quaternion();
@@ -67,8 +62,7 @@ export const DataLabel: React.FC<DataLabelProps> = ({ position, stats, structure
         localOffset.applyQuaternion(parentQuat.invert());
       }
 
-      // Match y position of structure (with a small hover for readability)
-      const hoverY = position.y + 2.4 + Math.sin(clock.elapsedTime * 1.5) * 0.05;
+      const hoverY = position.y + 3.0 + Math.sin(clock.elapsedTime * 2.0) * 0.1;
 
       const targetPos = new THREE.Vector3(
         position.x + localOffset.x,
@@ -78,7 +72,6 @@ export const DataLabel: React.FC<DataLabelProps> = ({ position, stats, structure
 
       groupRef.current.position.copy(targetPos);
 
-      // 4. Update holographic line geometry to follow label
       if (lineRef.current && lineRef.current.geometry) {
         lineRef.current.geometry.setPositions([
           position.x, position.y, position.z,
@@ -87,240 +80,181 @@ export const DataLabel: React.FC<DataLabelProps> = ({ position, stats, structure
         lineRef.current.computeLineDistances();
       }
 
-      // 5. Update midway particle position
       if (particleRef.current) {
-        particleRef.current.position.lerpVectors(position, targetPos, 0.5);
+        const t = (clock.elapsedTime * 0.6) % 1.0;
+        particleRef.current.position.lerpVectors(position, targetPos, t);
       }
     }
 
-    // Pulsing glow effect
     if (glowRef.current) {
-      const pulse = Math.sin(clock.elapsedTime * 2) * 0.5 + 0.5;
-      (glowRef.current.material as THREE.MeshBasicMaterial).opacity = 0.1 + pulse * 0.15;
+      const pulse = Math.sin(clock.elapsedTime * 3) * 0.5 + 0.5;
+      (glowRef.current.material as THREE.MeshBasicMaterial).opacity = 0.05 + pulse * 0.1;
     }
 
-    // Animated scanline
     if (scanlineRef.current) {
-      scanlineRef.current.position.y = (clock.elapsedTime * 0.3) % 1.2 - 0.6;
+      scanlineRef.current.position.y = (clock.elapsedTime * 0.4) % 1.0 - 0.5;
     }
   });
 
-  const panelWidth = 1.6;
-  const panelHeight = 0.3 + stats.length * 0.16;
-
-  // Holographic connection line points
-  const linePoints = useMemo(() => [
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0, 1.8, 0)
-  ], []);
+  const panelWidth = 2.0;
+  const panelHeight = 0.4 + stats.length * 0.2;
 
   return (
     <>
-      {/* Holographic connection line - Dynamic link to label */}
       {isSelected && (
         <>
           <Line
             ref={lineRef}
-            points={[position, position]} // Will be updated in useFrame
-            color="#00ff41"
+            points={[position, position]}
+            color="#00d4ff"
             transparent
-            opacity={0.6}
-            lineWidth={2}
+            opacity={0.3}
+            lineWidth={1.5}
           />
-
-          {/* Glowing particle at the midway point */}
           <mesh ref={particleRef}>
-            <sphereGeometry args={[0.02, 8, 8]} />
-            <meshBasicMaterial color="#00ff41" transparent opacity={0.8} />
+            <sphereGeometry args={[0.03, 8, 8]} />
+            <meshBasicMaterial color="#00d4ff" transparent opacity={0.6} toneMapped={false} />
           </mesh>
         </>
       )}
 
-      {/* Main Label Group */}
       <group ref={groupRef} scale={0}>
-
-        {/* Outer glow aura */}
-        <mesh ref={glowRef} position={[0, 0, -0.03]}>
-          <planeGeometry args={[panelWidth + 0.3, panelHeight + 0.3]} />
-          <meshBasicMaterial
-            color="#00ff41"
-            transparent
-            opacity={0.15}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-
-        {/* Glassy main panel - Optimized: removed meshPhysicalMaterial */}
-        <mesh position={[0, 0, -0.02]}>
+        {/* Modern Sci-Fi Glass Panel */}
+        <mesh position={[0, 0, -0.05]}>
           <planeGeometry args={[panelWidth, panelHeight]} />
           <meshBasicMaterial
-            color="#001a0d"
+            color="#0a1e32"
             transparent
-            opacity={0.4}
+            opacity={0.85}
             side={THREE.DoubleSide}
           />
         </mesh>
 
-        {/* Frosted glass effect overlay */}
-        <mesh position={[0, 0, -0.015]}>
+        {/* HUD Blueprint Grid */}
+        <mesh position={[0, 0, -0.04]}>
           <planeGeometry args={[panelWidth, panelHeight]} />
           <meshBasicMaterial
-            color="#003d1a"
+            color="#00d4ff"
             transparent
-            opacity={0.2}
+            opacity={0.05}
             side={THREE.DoubleSide}
+            wireframe
           />
         </mesh>
 
-        {/* Glowing border frame */}
-        <lineSegments position={[0, 0, -0.01]}>
-          <edgesGeometry args={[new THREE.PlaneGeometry(panelWidth, panelHeight)]} />
-          <lineBasicMaterial color="#00ff41" transparent opacity={0.8} linewidth={2} />
-        </lineSegments>
-
-        {/* Corner decorations */}
-        {[
-          [-panelWidth / 2, panelHeight / 2],
-          [panelWidth / 2, panelHeight / 2],
-          [-panelWidth / 2, -panelHeight / 2],
-          [panelWidth / 2, -panelHeight / 2]
-        ].map((pos, i) => (
-          <group key={i} position={[pos[0], pos[1], 0]}>
-            <mesh>
-              <boxGeometry args={[0.08, 0.01, 0.01]} />
-              <meshBasicMaterial color="#00ff41" />
-            </mesh>
-            <mesh rotation={[0, 0, Math.PI / 2]}>
-              <boxGeometry args={[0.08, 0.01, 0.01]} />
-              <meshBasicMaterial color="#00ff41" />
-            </mesh>
-          </group>
-        ))}
-
-        {/* Animated scanline */}
-        <mesh ref={scanlineRef} position={[0, 0, 0.005]}>
-          <planeGeometry args={[panelWidth, 0.02]} />
-          <meshBasicMaterial color="#00ff41" transparent opacity={0.2} />
-        </mesh>
-
-        {/* Header with structure name */}
-        <group position={[0, panelHeight / 2 - 0.12, 0.01]}>
-          {/* Header glow */}
-          <mesh position={[0, 0, -0.005]}>
-            <planeGeometry args={[panelWidth - 0.1, 0.15]} />
-            <meshBasicMaterial color="#00ff41" transparent opacity={0.1} />
+        {/* Technical Border with Inset Corners */}
+        <group position={[0, 0, -0.01]}>
+          {/* Top Line */}
+          <mesh position={[0, panelHeight / 2, 0]}>
+            <planeGeometry args={[panelWidth - 0.2, 0.01]} />
+            <meshBasicMaterial color="#00d4ff" transparent opacity={0.6} />
           </mesh>
-
-          <Text
-            fontSize={0.09}
-            color="#00ff41"
-            anchorX="center"
-            anchorY="middle"
-            fontWeight={700}
-            letterSpacing={0.08}
-            outlineWidth={0.01}
-            outlineColor="#003d1a"
-          >
-            {structureName.toUpperCase()}
-          </Text>
-
-          {/* Decorative underline */}
-          <mesh position={[0, -0.06, 0]}>
-            <planeGeometry args={[panelWidth - 0.3, 0.01]} />
-            <meshBasicMaterial color="#00ff41" transparent opacity={0.6} />
+          {/* Bottom Line */}
+          <mesh position={[0, -panelHeight / 2, 0]}>
+            <planeGeometry args={[panelWidth - 0.2, 0.01]} />
+            <meshBasicMaterial color="#00d4ff" transparent opacity={0.6} />
+          </mesh>
+          {/* Right/Left Vertical Bits */}
+          <mesh position={[panelWidth / 2, 0, 0]}>
+            <planeGeometry args={[0.01, panelHeight - 0.2]} />
+            <meshBasicMaterial color="#00d4ff" transparent opacity={0.6} />
+          </mesh>
+          <mesh position={[-panelWidth / 2, 0, 0]}>
+            <planeGeometry args={[0.01, panelHeight - 0.2]} />
+            <meshBasicMaterial color="#00d4ff" transparent opacity={0.6} />
           </mesh>
         </group>
 
-        {/* Stats Display - Visible when selected */}
-        <group
-          position={[0, panelHeight / 2 - 0.28, 0.01]}
-          visible={isSelected}
-        >
-          {stats.map((stat, index) => {
-            const yPos = -index * 0.16;
-            const statusColor = getStatusColor(stat.status);
+        {/* Fancy HUD Header */}
+        <group position={[0, panelHeight / 2 - 0.15, 0.01]}>
+          <mesh position={[0, 0, -0.005]}>
+            <planeGeometry args={[panelWidth - 0.3, 0.18]} />
+            <meshBasicMaterial color="#00d4ff" transparent opacity={0.15} />
+          </mesh>
+          <Text
+            fontSize={0.12}
+            color="#00d4ff"
+            fontWeight={900}
+            letterSpacing={0.15}
+            anchorX="center"
+          >
+            {structureName.toUpperCase()}
+          </Text>
+          <mesh position={[0, -0.08, 0]}>
+            <planeGeometry args={[panelWidth - 0.6, 0.01]} />
+            <meshBasicMaterial color="#00d4ff" transparent opacity={0.8} />
+          </mesh>
+        </group>
 
+        {/* Dynamic Scanline HUD effect */}
+        <mesh ref={scanlineRef} position={[0, 0, 0.02]}>
+          <planeGeometry args={[panelWidth, 0.03]} />
+          <meshBasicMaterial color="#00d4ff" transparent opacity={0.25} />
+        </mesh>
+
+        {/* Stats Content */}
+        <group position={[0, panelHeight / 2 - 0.45, 0.02]}>
+          {stats.map((stat, i) => {
+            const y = -i * 0.22;
+            const statusColor = getStatusColor(stat.status);
             return (
-              <group key={index} position={[0, yPos, 0]}>
-                {/* Stat background glow */}
-                <mesh position={[0, 0, -0.005]}>
-                  <planeGeometry args={[panelWidth - 0.2, 0.12]} />
-                  <meshBasicMaterial
-                    color={statusColor}
-                    transparent
-                    opacity={0.05}
-                  />
+              <group key={i} position={[0, y, 0]}>
+                {/* Horizontal Stat Bar Background */}
+                <mesh position={[0, 0.04, -0.01]}>
+                  <planeGeometry args={[panelWidth - 0.4, 0.005]} />
+                  <meshBasicMaterial color="#00d4ff" transparent opacity={0.1} />
                 </mesh>
 
-                {/* Status indicator dot */}
-                <mesh position={[-panelWidth / 2 + 0.15, 0, 0]}>
-                  <circleGeometry args={[0.025, 16]} />
+                {/* Status indicator Pill */}
+                <mesh position={[-panelWidth / 2 + 0.25, 0, 0]}>
+                  <capsuleGeometry args={[0.015, 0.06, 4, 8]} />
                   <meshBasicMaterial color={statusColor} />
                 </mesh>
 
-                {/* Status glow */}
-                <mesh position={[-panelWidth / 2 + 0.15, 0, -0.005]}>
-                  <circleGeometry args={[0.04, 16]} />
-                  <meshBasicMaterial
-                    color={statusColor}
-                    transparent
-                    opacity={0.3}
-                  />
-                </mesh>
-
-                {/* Label text */}
                 <Text
-                  position={[-panelWidth / 2 + 0.25, 0, 0]}
-                  fontSize={0.065}
-                  color="#00ff41"
+                  position={[-panelWidth / 2 + 0.38, 0, 0]}
+                  fontSize={0.08}
+                  color="#ffffff"
                   anchorX="left"
-                  anchorY="middle"
-                  fontWeight={500}
-                  letterSpacing={0.02}
+                  fontWeight={400}
+                  letterSpacing={0.05}
                 >
                   {stat.label}
                 </Text>
 
-                {/* Value text with glow */}
                 <Text
-                  position={[panelWidth / 2 - 0.15, 0, 0]}
-                  fontSize={0.075}
+                  position={[panelWidth / 2 - 0.25, 0, 0]}
+                  fontSize={0.1}
                   color={statusColor}
                   anchorX="right"
-                  anchorY="middle"
-                  fontWeight={700}
-                  letterSpacing={0.05}
-                  outlineWidth={0.015}
+                  fontWeight={900}
+                  letterSpacing={0.08}
+                  outlineWidth={0.01}
                   outlineColor="#000000"
                 >
                   {stat.value}
                 </Text>
-
-                {/* Separator line */}
-                {index < stats.length - 1 && (
-                  <mesh position={[0, -0.08, 0]}>
-                    <planeGeometry args={[panelWidth - 0.4, 0.005]} />
-                    <meshBasicMaterial
-                      color="#00ff41"
-                      transparent
-                      opacity={0.2}
-                    />
-                  </mesh>
-                )}
               </group>
             );
           })}
         </group>
 
-        {/* Holographic flicker effect - random noise texture */}
-        <mesh position={[0, 0, 0.02]}>
-          <planeGeometry args={[panelWidth, panelHeight]} />
-          <meshBasicMaterial
-            color="#00ff41"
-            transparent
-            opacity={0.03}
-            side={THREE.DoubleSide}
-          />
+        {/* OS Designation Footer */}
+        <group position={[0, -panelHeight / 2 + 0.08, 0.01]}>
+          <Text
+            fontSize={0.05}
+            color="#00d4ff"
+            fillOpacity={0.4}
+            letterSpacing={0.4}
+          >
+            0xAA.77.B8.02_SYSTEM_LIVE
+          </Text>
+        </group>
+
+        {/* Ambient Bloom Plane */}
+        <mesh position={[0, 0, -0.06]}>
+          <planeGeometry args={[panelWidth * 1.2, panelHeight * 1.2]} />
+          <meshBasicMaterial color="#00d4ff" transparent opacity={0.05} />
         </mesh>
       </group>
     </>

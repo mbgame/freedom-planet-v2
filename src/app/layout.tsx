@@ -5,7 +5,7 @@ import './globals.css';
 import { SWRegister } from '@/components/ui/SWRegister';
 
 // Client-side only Leva controller
-const ClientLeva = dynamic(() => import('@/components/ui/ClientLeva').then(mod => mod.ClientLeva), { ssr: false });
+const ClientLeva = dynamic(() => import('@/components/ui/ClientLeva').then(mod => ({ default: mod.ClientLeva })), { ssr: false });
 
 const inter = Inter({
   subsets: ['latin'],

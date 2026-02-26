@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import * as THREE from 'three';
-import { getTerrainWorldHeight, getFlatnessScore } from '@/utils/terrain';
+import { getTerrainWorldHeight, getFlatnessScore } from '../utils/terrain';
 
 export type ViewState = 'ORBIT' | 'TRANSITION' | 'SURFACE' | 'MOON';
 
@@ -26,6 +26,8 @@ export interface StructureData {
   position: [number, number, number];
   rotationY: number;
   stats: StructureStat[];
+  amount?: number;
+  image?: string;
 }
 
 export interface NodeData {
@@ -34,7 +36,7 @@ export interface NodeData {
   structures: StructureData[];
 }
 
-interface GameState {
+interface ThreeDState {
   // View state
   view: ViewState;
   isTransitioning: boolean;
@@ -53,9 +55,16 @@ interface GameState {
   initialLoadComplete: boolean;
   loadingProgress: number;
 
-  // Actions
+  // Actions state
   focusedStructureIndex: number;
   navigationOffset: number;
+  heroes: HeroData[];
+  spawnedHeroes: SpawnedHero[];
+  activeGenerations: Record<string, ActiveGeneration>;
+  selectedHeroDetail: HeroData | null;
+  isFocusingHeroes: boolean;
+  focusedHeroesStructureId: string | null;
+  focusedHeroIndex: number;
 
   // Actions
   setView: (view: ViewState) => void;
@@ -73,11 +82,6 @@ interface GameState {
   exitMoon: () => void;
   nextMoon: () => void;
   prevMoon: () => void;
-  heroes: HeroData[];
-  spawnedHeroes: SpawnedHero[];
-  activeGenerations: Record<string, ActiveGeneration>;
-  selectedHeroDetail: HeroData | null;
-
   startGeneration: (heroId: string, structureId: string) => void;
   cancelGeneration: (structureId: string) => void;
   spawnHero: (heroId: string, structureId: string) => void;
@@ -85,10 +89,10 @@ interface GameState {
   setIsFocusingHeroes: (focus: boolean, structureId?: string | null) => void;
   nextFocusedHero: () => void;
   prevFocusedHero: () => void;
-  isFocusingHeroes: boolean;
-  focusedHeroesStructureId: string | null;
-  focusedHeroIndex: number;
+  setNodes: (nodes: NodeData[]) => void;
 }
+
+
 
 export interface HeroData {
   id: string;
@@ -107,121 +111,6 @@ export interface HeroData {
 }
 
 // Sample data - in production this would come from an API
-const generateNodes = (): NodeData[] => {
-  const nodes: NodeData[] = [];
-  const phiSpan = Math.PI * 2;
-  const thetaSpan = Math.PI;
-  const radius = 2.05;
-  const MIN_NODE_DISTANCE = 1.2;
-
-  for (let i = 0; i < 8; i++) {
-    let x = 0, y = 0, z = 0;
-    let foundNodePos = false;
-    let nodeAttempts = 0;
-
-    while (!foundNodePos && nodeAttempts < 100) {
-      nodeAttempts++;
-      const phi = Math.random() * phiSpan;
-      const theta = Math.random() * thetaSpan;
-
-      x = radius * Math.sin(theta) * Math.cos(phi);
-      y = radius * Math.sin(theta) * Math.sin(phi);
-      z = radius * Math.cos(theta);
-
-      let tooClose = false;
-      for (const existingNode of nodes) {
-        const dist = existingNode.position.distanceTo(new THREE.Vector3(x, y, z));
-        if (dist < MIN_NODE_DISTANCE) {
-          tooClose = true;
-          break;
-        }
-      }
-
-      if (!tooClose) {
-        foundNodePos = true;
-      }
-    }
-
-    // Generate 2-4 structures per node
-    const structureCount = 2 + Math.floor(Math.random() * 3);
-    const structures: StructureData[] = [];
-
-    const MIN_STR_DISTANCE = 12;
-    const SPAWN_RANGE = 40;
-
-    for (let j = 0; j < structureCount; j++) {
-      const types: ('Polymer Plants' | 'Robotics Workshop' | 'Aeroponic Farms' | 'Barracks')[] = [
-        'Polymer Plants',
-        'Robotics Workshop',
-        'Aeroponic Farms',
-        'Barracks'
-      ];
-      const type = types[Math.floor(Math.random() * types.length)];
-
-      let xPos = 0;
-      let zPos = 0;
-      let yPos = 0;
-      let attempts = 0;
-      let isTooClose = true;
-      let bestX = 0;
-      let bestZ = 0;
-      let bestY = 0;
-      let bestScore = Infinity;
-
-      // Search for the flattest possible spot
-      const SEARCH_SAMPLES = 30;
-      for (let s = 0; s < SEARCH_SAMPLES; s++) {
-        const testX = (Math.random() - 0.5) * SPAWN_RANGE;
-        const testZ = (Math.random() - 0.5) * SPAWN_RANGE;
-
-        // 1. Check distance to other structures
-        let tooClose = false;
-        for (const existing of structures) {
-          const dx = testX - existing.position[0];
-          const dz = testZ - existing.position[2];
-          if (Math.sqrt(dx * dx + dz * dz) < MIN_STR_DISTANCE) {
-            tooClose = true;
-            break;
-          }
-        }
-        if (tooClose) continue;
-
-        // 2. Evaluate flatness (near 0 height)
-        const score = getFlatnessScore(testX, testZ);
-        if (score < bestScore) {
-          bestScore = score;
-          bestX = testX;
-          bestZ = testZ;
-          bestY = getTerrainWorldHeight(testX, testZ);
-        }
-      }
-
-      // If no valid spot found in samples, just pick a random far-enough spot
-      if (bestScore === Infinity) {
-        bestX = (Math.random() - 0.5) * SPAWN_RANGE;
-        bestZ = (Math.random() - 0.5) * SPAWN_RANGE;
-        bestY = getTerrainWorldHeight(bestX, bestZ);
-      }
-
-      structures.push({
-        id: `${type.toLowerCase().replace(/\s+/g, '-')}-${i}-${j}`,
-        type,
-        position: [bestX, bestY, bestZ],
-        rotationY: Math.random() * Math.PI * 2,
-        stats: generateStatsForType(type)
-      });
-    }
-
-    nodes.push({
-      id: `node-${i}`,
-      position: new THREE.Vector3(x, y, z),
-      structures
-    });
-  }
-
-  return nodes;
-};
-
 const generateMoons = (): MoonData[] => {
   return [
     {
@@ -254,55 +143,12 @@ const generateMoons = (): MoonData[] => {
   ];
 };
 
-const generateStatsForType = (type: string): StructureStat[] => {
-  switch (type) {
-    case 'Aeroponic Farms':
-      return [
-        { label: 'YIELD', value: `${60 + Math.floor(Math.random() * 40)}%`, status: Math.random() > 0.3 ? 'good' : 'warning' },
-        { label: 'HUMIDITY', value: `${70 + Math.floor(Math.random() * 20)}%`, status: Math.random() > 0.5 ? 'good' : 'warning' },
-        { label: 'SYSTEMS', value: 'OPTIMAL', status: 'good' },
-      ];
-    case 'Polymer Plants':
-      return [
-        { label: 'PURITY', value: `${95 + Math.floor(Math.random() * 5)}%`, status: 'good' },
-        { label: 'THERMAL', value: `${300 + Math.floor(Math.random() * 200)}°C`, status: Math.random() > 0.4 ? 'good' : 'warning' },
-      ];
-    case 'Robotics Workshop':
-      return [
-        { label: 'STATUS', value: Math.random() > 0.1 ? 'ACTIVE' : 'IDLE', status: Math.random() > 0.1 ? 'good' : 'warning' },
-        { label: 'BOTS', value: `${10 + Math.floor(Math.random() * 20)} Units`, status: 'good' },
-        { label: 'QUEUE', value: `${Math.floor(Math.random() * 5)} Pending`, status: 'good' },
-      ];
-    case 'Barracks':
-      return [
-        { label: 'GARRISON', value: `${20 + Math.floor(Math.random() * 80)}%`, status: 'good' },
-        { label: 'MORALE', value: 'HIGH', status: 'good' },
-        { label: 'TRAINING', value: 'ACTIVE', status: 'good' },
-      ];
-    default:
-      return [];
-  }
-};
-
 export interface HeroAbility {
   name: string;
   description: string;
 }
 
-export interface HeroData {
-  id: string;
-  name: string;
-  image: string;
-  level: number;
-  duration: number; // in seconds
-  isActive: boolean;
-  attack: number;
-  defense: number;
-  specialAttack: number;
-  movementSpeed: number;
-  hp: number;
-  abilities: string[];
-}
+
 
 export interface SpawnedHero {
   id: string;
@@ -411,14 +257,14 @@ const HERO_MOCK_DATA: HeroData[] = [
   }
 ];
 
-export const useGameStore = create<GameState>((set, get) => ({
+export const useGameStore = create<ThreeDState>((set, get) => ({
   view: 'ORBIT',
   isTransitioning: false,
   selectedNode: null,
   selectedStructure: null,
   focusedStructureIndex: 0,
   navigationOffset: 0,
-  nodes: generateNodes(),
+  nodes: [],
   moons: generateMoons(),
   selectedMoon: null,
   isLoading: true,
@@ -431,6 +277,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   isFocusingHeroes: false,
   focusedHeroesStructureId: null,
   focusedHeroIndex: 0,
+  setNodes: (nodes) => set({ nodes }),
 
   setView: (view) => set({ view }),
 
@@ -456,14 +303,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { selectedNode, focusedStructureIndex } = get();
     if (!selectedNode || selectedNode.structures.length === 0) return;
     const nextIndex = (focusedStructureIndex + 1) % selectedNode.structures.length;
-    set({ focusedStructureIndex: nextIndex });
+    set({ focusedStructureIndex: nextIndex, selectedStructure: null });
   },
 
   prevStructure: () => {
     const { selectedNode, focusedStructureIndex } = get();
     if (!selectedNode || selectedNode.structures.length === 0) return;
     const prevIndex = (focusedStructureIndex - 1 + selectedNode.structures.length) % selectedNode.structures.length;
-    set({ focusedStructureIndex: prevIndex });
+    set({ focusedStructureIndex: prevIndex, selectedStructure: null });
   },
 
   setNavigationOffset: (offset) => set({ navigationOffset: offset }),
@@ -616,4 +463,4 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (heroesCount === 0) return;
     set({ focusedHeroIndex: (focusedHeroIndex - 1 + heroesCount) % heroesCount });
   }
-}));
+}));;
