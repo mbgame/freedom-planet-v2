@@ -35,11 +35,25 @@ const preloadAssets = () => {
   // Textures - Hero Sprite
   useTexture.preload('/images/heroes/heroes.png');
 
-  // Textures - Planet
-  useTexture.preload('/textures/planet/398/planet_diffuseMap_Gaia_seed620.png');
-  useTexture.preload('/textures/planet/398/planet_normalMap_Gaia_seed620.png');
-  useTexture.preload('/textures/planet/398/planet_specularMap_Gaia_seed620.png');
-  useTexture.preload('/textures/planet/clouds.jpg');
+  // Textures - Terrain layers (6 layers * 3 maps = 18 textures)
+  const PH = 'https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k';
+  const terrainLayers = [
+    'gravelly_sand/gravelly_sand',
+    'forest_floor/forest_floor',
+    'ground_mud/ground_mud',
+    'rocky_terrain_02/rocky_terrain_02',
+    'aerial_grass_rock/aerial_grass_rock',
+    'snow_04/snow_04'
+  ];
+
+  terrainLayers.forEach(basePath => {
+    useTexture.preload(`${PH}/${basePath}_diff_1k.jpg`);
+    useTexture.preload(`${PH}/${basePath}_nor_gl_1k.jpg`);
+    useTexture.preload(`${PH}/${basePath}_arm_1k.jpg`);
+  });
+
+  // Texture - Water normal
+  useTexture.preload(`${PH}/water_normal/water_normal_1k.jpg`);
 
   // Textures - Moons
   const moonFolders = ['Moon_001_Textures', 'Moon_002_Textures', 'Moon_003_Textures'];
@@ -70,7 +84,6 @@ const NodesRotationWrapper: React.FC<{ children: React.ReactNode }> = ({ childre
 
 export const SceneManager: React.FC = () => {
   const view = useGameStore(state => state.view);
-  const selectedNode = useGameStore(state => state.selectedNode);
 
   // Trigger preloading immediately on mount
   useEffect(() => {
@@ -113,22 +126,16 @@ export const SceneManager: React.FC = () => {
             <Nodes />
           </NodesRotationWrapper>
 
-          {/* 
-            Always mount SurfaceScene invisibly from the very beginning.
-            This ensures that during the initial Loading Screen, 
-            Three.js/Drei will catch all surface models and terrain textures
-            and include them in the initial progress percentage.
+          {/*
+            GPU Warmup: The SurfaceScene contains complex terrain shaders, PBR models,
+            and environment lighting. We render it at a tiny but VISIBLE scale positioned
+            far off-camera (9000 units away) so WebGL MUST compile and upload all shaders
+            and textures to VRAM. Using scale={0} or visible={false} bypasses GPU compilation.
+            This completely eliminates the 'first-visit' stutter when the user taps Visit.
           */}
-          <group visible={false} position={[5000, 5000, 5000]}>
+          <group scale={0.01} position={[9000, 9000, 9000]}>
             <SurfaceScene isPreloading={true} />
           </group>
-
-          {/* Special case for actual transition: mount precisely what we need */}
-          {view === 'TRANSITION' && selectedNode && (
-            <group visible={false}>
-              <SurfaceScene />
-            </group>
-          )}
         </>
       ) : (
         <SurfaceScene />

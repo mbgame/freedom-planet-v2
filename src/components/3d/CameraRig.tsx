@@ -14,6 +14,11 @@ export const CameraRig: React.FC = () => {
   const prevMoon = useGameStore(state => state.prevMoon);
   const { active: assetsLoading } = useProgress();
 
+  // Safety timeout: if assetsLoading stays true for > 2s after camera arrives,
+  // force-enter surface anyway. Prevents stall when Poly Haven textures are slow.
+  const surfaceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cameraArrivedRef = useRef(false);
+
   const isDragging = useRef(false);
   const startTouchX = useRef(0);
   const previousMouse = useRef({ x: 0, y: 0 });
@@ -81,6 +86,17 @@ export const CameraRig: React.FC = () => {
     moonOrbitAngle.current = { theta: 0, phi: 0 };
   }, [selectedMoon?.id]);
 
+  // Clean up the safety timeout when view changes away from TRANSITION
+  useEffect(() => {
+    if (view !== 'TRANSITION') {
+      if (surfaceTimeoutRef.current) {
+        clearTimeout(surfaceTimeoutRef.current);
+        surfaceTimeoutRef.current = null;
+      }
+      cameraArrivedRef.current = false;
+    }
+  }, [view]);
+
   const targetPosition = useRef(new THREE.Vector3());
   const targetLookAt = useRef(new THREE.Vector3());
 
@@ -94,9 +110,25 @@ export const CameraRig: React.FC = () => {
       camera.position.lerp(targetPos, lerpSpeed);
       camera.lookAt(selectedNode.position);
 
-      // Check if transition is complete: Camera is close AND assets are not loading
-      if (camera.position.distanceTo(targetPos) < 0.4 && !assetsLoading) {
+      // Camera has reached close enough
+      const arrived = camera.position.distanceTo(targetPos) < 0.4;
+
+      if (arrived && !assetsLoading) {
+        // Best case: camera arrived AND assets ready
+        if (surfaceTimeoutRef.current) {
+          clearTimeout(surfaceTimeoutRef.current);
+          surfaceTimeoutRef.current = null;
+        }
+        cameraArrivedRef.current = false;
         enterSurface();
+      } else if (arrived && !cameraArrivedRef.current) {
+        // Camera arrived but assets still loading — arm the 2s fallback
+        cameraArrivedRef.current = true;
+        surfaceTimeoutRef.current = setTimeout(() => {
+          surfaceTimeoutRef.current = null;
+          cameraArrivedRef.current = false;
+          enterSurface();
+        }, 2000);
       }
     } else if (view === 'SURFACE' && selectedNode) {
       const state = useGameStore.getState();

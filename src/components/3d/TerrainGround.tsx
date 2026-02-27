@@ -27,9 +27,9 @@ const LAYERS = [
     scale: 7,
   },
   { // 1 – rocky terrain
-    diff: `${PH}/rocky_terrain_02/rocky_terrain_02_diff_1k.jpg`,
-    nor: `${PH}/rocky_terrain_02/rocky_terrain_02_nor_gl_1k.jpg`,
-    arm: `${PH}/rocky_terrain_02/rocky_terrain_02_arm_1k.jpg`,
+    diff: `${PH}/coast_sand_rocks_02/coast_sand_rocks_02_diff_1k.jpg`,
+    nor: `${PH}/coast_sand_rocks_02/coast_sand_rocks_02_nor_gl_1k.jpg`,
+    arm: `${PH}/coast_sand_rocks_02/coast_sand_rocks_02_arm_1k.jpg`,
     scale: 9,
   },
   { // 2 – aerial grass rock (steep)
@@ -39,9 +39,9 @@ const LAYERS = [
     scale: 11,
   },
   { // 3 – snow
-    diff: `${PH}/snow_04/snow_04_diff_1k.jpg`,
-    nor: `${PH}/snow_04/snow_04_nor_gl_1k.jpg`,
-    arm: `${PH}/snow_04/snow_04_arm_1k.jpg`,
+    diff: `${PH}/snow_02/snow_02_diff_1k.jpg`,
+    nor: `${PH}/snow_02/snow_02_nor_gl_1k.jpg`,
+    arm: `${PH}/snow_02/snow_02_arm_1k.jpg`,
     scale: 6,
   },
 ] as const;

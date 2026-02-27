@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useRef, useMemo, useEffect, useState } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
-import { useProgress } from '@react-three/drei';
 
 const transitionVertexShader = `
   varying vec2 vUv;
@@ -72,8 +71,9 @@ export const TransitionVFX: React.FC = () => {
   const isTransitioning = useGameStore(state => state.isTransitioning);
   const view = useGameStore(state => state.view);
 
-  const [internalProgress, setInternalProgress] = useState(0);
-  const phase = useRef<'IN' | 'HOLD' | 'OUT'>('IN');
+  // ─── Use REFS only for animation state – no useState inside useFrame ─────
+  const progressRef = useRef(0);
+  const phase = useRef<'IN' | 'HOLD' | 'OUT' | 'IDLE'>('IDLE');
 
   // Calculate dynamic scale to cover screen
   const scale = useMemo(() => {
@@ -82,65 +82,56 @@ export const TransitionVFX: React.FC = () => {
     return [width * 2, height * 2, 1] as [number, number, number];
   }, [camera, viewport.aspect]);
 
+  // Drive phase transitions based on view/isTransitioning changes
   useEffect(() => {
     if (view === 'TRANSITION') {
       phase.current = 'IN';
-      setInternalProgress(0);
+      progressRef.current = 0;
     } else if (view === 'SURFACE' && isTransitioning) {
       phase.current = 'OUT';
     } else if (!isTransitioning) {
-      setInternalProgress(0);
-      phase.current = 'IN';
+      progressRef.current = 0;
+      phase.current = 'IDLE';
     }
   }, [view, isTransitioning]);
+
+  const uniforms = useMemo(() => ({
+    uTime: { value: 0 },
+    uProgress: { value: 0 },
+  }), []);
 
   useFrame((state, delta) => {
     if (!materialRef.current || !meshRef.current) return;
 
-    if (!isTransitioning) {
+    if (!isTransitioning || phase.current === 'IDLE') {
       meshRef.current.visible = false;
       return;
     }
 
-    // Phase management
+    // ─── Pure ref-based phase animation (no setState, no re-renders) ───────
     if (phase.current === 'IN') {
-      // Speed up to peak (0.5)
-      setInternalProgress(prev => {
-        const next = prev + delta * 0.8; // ~0.6s to hit 0.5
-        if (next >= 0.5) {
-          phase.current = 'HOLD';
-          return 0.5;
-        }
-        return next;
-      });
+      progressRef.current = Math.min(progressRef.current + delta * 0.8, 0.5);
+      if (progressRef.current >= 0.5) {
+        phase.current = 'HOLD';
+      }
     } else if (phase.current === 'HOLD') {
-      // Stay at peak (0.5)
-      setInternalProgress(0.5);
+      progressRef.current = 0.5; // pinned
     } else if (phase.current === 'OUT') {
-      // Fade out from 0.5 to 1.0
-      setInternalProgress(prev => {
-        const next = prev + delta * 0.7; // Snappy reveal
-        if (next >= 1.0) {
-          return 1.0;
-        }
-        return next;
-      });
+      progressRef.current = Math.min(progressRef.current + delta * 0.7, 1.0);
     }
 
-    materialRef.current.uniforms.uProgress.value = internalProgress;
+    const p = progressRef.current;
+
+    // Update shader uniforms directly (no React state involved)
+    materialRef.current.uniforms.uProgress.value = p;
     materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
 
     // Position in front of camera
     const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     meshRef.current.position.copy(camera.position).addScaledVector(direction, 0.1);
     meshRef.current.quaternion.copy(camera.quaternion);
-    meshRef.current.visible = internalProgress > 0 && internalProgress < 1;
+    meshRef.current.visible = p > 0 && p < 1;
   });
-
-  const uniforms = useMemo(() => ({
-    uTime: { value: 0 },
-    uProgress: { value: 0 },
-  }), []);
 
   return (
     <mesh ref={meshRef} frustumCulled={false} scale={scale} renderOrder={999}>
