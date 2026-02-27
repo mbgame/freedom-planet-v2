@@ -15,19 +15,20 @@ const DEFAULT_PLANET_VALUES = {
     displacementBias: 0.0,
     roughness: 0.6,
     metalness: 0.2,
-    emissiveIntensity: 0.05,
+    emissiveIntensity: 0.01,
     emissiveColor: '#001a33',
-    normalScale: 0.8,
+    normalScale: 0.1,
 };
 
 // Realistic atmosphere shaders — thin Fresnel rim with sun-side brightening
 const atmosphereVertexShader = `
   varying vec3 vNormal;
-  varying vec3 vPosition;
+  varying vec3 vViewDirection;
   
   void main() {
     vNormal = normalize(normalMatrix * normal);
-    vPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+    vViewDirection = normalize(worldPosition.xyz - cameraPosition);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
@@ -36,39 +37,75 @@ const atmosphereFragmentShader = `
   uniform vec3 glowColor;
   uniform vec3 sunDirection;
   uniform float atmosphereIntensity;
+  uniform float rayleighCoefficient;
+  uniform float mieCoefficient;
+  uniform float scatteringPower;
+  uniform float hazeOpacity;
+  
   varying vec3 vNormal;
-  varying vec3 vPosition;
+  varying vec3 vViewDirection;
   
   void main() {
-    vec3 viewDir = normalize(-vPosition);
-    float dotNV = dot(vNormal, viewDir);
+    // 1. Core vectors
+    vec3 normal = normalize(vNormal);
+    vec3 viewDir = normalize(vViewDirection);
+    vec3 lightDir = normalize(sunDirection);
     
-    // Fresnel rim — power 4.0 gives a thin realistic edge
-    float fresnel = pow(1.0 - max(0.0, dotNV), 4.0);
+    // 2. Fresnel / Rim effect
+    float dotNV = dot(normal, -viewDir);
+    float fresnel = pow(1.0 - max(0.0, dotNV), scatteringPower);
     
-    // Simple sun-side half-sphere brightness
-    float sunFactor = max(0.0, dot(vNormal, sunDirection));
+    // 3. Rayleigh Scattering Approximation (Blue sky effect)
+    // Strongest at the edges and in the direction of the light
+    float cosTheta = dot(-viewDir, lightDir);
+    float rayleighPhase = 0.75 * (1.0 + cosTheta * cosTheta);
+    vec3 rayleighColor = glowColor * rayleighCoefficient * rayleighPhase;
     
-    // Combine: visible on sun side, faint on dark side
-    float intensity = fresnel * (0.15 + 0.85 * sunFactor) * atmosphereIntensity;
+    // 4. Mie Scattering Approximation (Sunset/Haze effect)
+    // Forward scattering towards the sun
+    float g = 0.85; // Anisotropy
+    float miePhase = 1.5 * ((1.0 - g * g) / (2.0 + g * g)) * pow(1.0 + g * g - 2.0 * g * cosTheta, -1.5);
+    vec3 mieColor = vec3(1.0, 0.9, 0.8) * mieCoefficient * miePhase;
     
-    gl_FragColor = vec4(glowColor, intensity * 0.4);
+    // 5. Sun side weighting
+    float sunFactor = max(0.0, dot(normal, lightDir));
+    
+    // 6. Final Composition
+    vec3 atmosphereColor = (rayleighColor + mieColor) * (0.5 + 0.5 * sunFactor);
+    atmosphereColor += glowColor * 0.05; // Ambient atmospheric glow
+    
+    // Alpha falloff
+    float alpha = fresnel * atmosphereIntensity * hazeOpacity;
+    
+    // Enhance brightness on sun-side rim
+    alpha *= (0.2 + 0.8 * sunFactor);
+    
+    gl_FragColor = vec4(atmosphereColor, alpha);
   }
 `;
 
 export const Atmosphere: React.FC<{ color: string; intensity: number }> = ({ color, intensity }) => {
     const meshRef = useRef<THREE.Mesh>(null);
-    const { camera } = useThree();
 
-    // Use common scene lighting controls to get sun direction
     const { directPosition } = useControls('Scene Lighting', {
         directPosition: { x: 10, y: 10, z: 5 },
+    }, { collapsed: true });
+
+    const atmosphereControls = useControls('Atmosphere', {
+        rayleighCoefficient: { value: 0.8, min: 0, max: 2, step: 0.01 },
+        mieCoefficient: { value: 0.14, min: 0, max: 0.5, step: 0.01 },
+        scatteringPower: { value: 8.0, min: 1, max: 20, step: 0.1 },
+        hazeOpacity: { value: 0.17, min: 0, max: 1, step: 0.01 },
     }, { collapsed: true });
 
     const uniforms = useMemo(() => ({
         glowColor: { value: new THREE.Color(color) },
         sunDirection: { value: new THREE.Vector3() },
         atmosphereIntensity: { value: intensity },
+        rayleighCoefficient: { value: atmosphereControls.rayleighCoefficient },
+        mieCoefficient: { value: atmosphereControls.mieCoefficient },
+        scatteringPower: { value: atmosphereControls.scatteringPower },
+        hazeOpacity: { value: atmosphereControls.hazeOpacity },
     }), []);
 
     useFrame(() => {
@@ -76,11 +113,15 @@ export const Atmosphere: React.FC<{ color: string; intensity: number }> = ({ col
             uniforms.sunDirection.value.set(directPosition.x, directPosition.y, directPosition.z).normalize();
             uniforms.glowColor.value.set(color);
             uniforms.atmosphereIntensity.value = intensity;
+            uniforms.rayleighCoefficient.value = atmosphereControls.rayleighCoefficient;
+            uniforms.mieCoefficient.value = atmosphereControls.mieCoefficient;
+            uniforms.scatteringPower.value = atmosphereControls.scatteringPower;
+            uniforms.hazeOpacity.value = atmosphereControls.hazeOpacity;
         }
     });
 
     return (
-        <mesh ref={meshRef} scale={2.04}>
+        <mesh ref={meshRef} scale={2.15}>
             <sphereGeometry args={[1, 64, 64]} />
             <shaderMaterial
                 uniforms={uniforms}
@@ -205,9 +246,9 @@ export const Planet: React.FC = () => {
 
     // Load textures
     const [colorMap, normalMap, specularMap] = useTexture([
-        '/textures/planet/daymap.jpg',
-        '/textures/planet/normal.jpg',
-        '/textures/planet/specular.jpg'
+        '/textures/planet/398/planet_diffuseMap_Gaia_seed620.png',
+        '/textures/planet/398/planet_normalMap_Gaia_seed620.png',
+        '/textures/planet/398/planet_specularMap_Gaia_seed620.png'
     ]);
 
     useFrame((_, delta) => {
@@ -222,7 +263,7 @@ export const Planet: React.FC = () => {
         <group>
             {/* Main planet */}
             <mesh ref={meshRef}>
-                <sphereGeometry args={[2, 128, 128]} />
+                <sphereGeometry args={[2, 256, 256]} />
                 <meshStandardMaterial
                     map={colorMap}
                     normalMap={normalMap}

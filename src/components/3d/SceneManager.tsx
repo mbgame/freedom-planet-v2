@@ -19,7 +19,7 @@ const SHOW_CONTROLS = process.env.NEXT_PUBLIC_SHOW_CONTROLS === 'true';
 const DEFAULT_LIGHT_VALUES = {
   ambientIntensity: 0.1,
   ambientColor: '#ffffff',
-  directIntensity: 10.0,
+  directIntensity: 5.0,
   directColor: '#ffffff',
   directPosition: { x: 10, y: 10, z: 5 },
 };
@@ -36,9 +36,9 @@ const preloadAssets = () => {
   useTexture.preload('/images/heroes/heroes.png');
 
   // Textures - Planet
-  useTexture.preload('/textures/planet/daymap.jpg');
-  useTexture.preload('/textures/planet/normal.jpg');
-  useTexture.preload('/textures/planet/specular.jpg');
+  useTexture.preload('/textures/planet/398/planet_diffuseMap_Gaia_seed620.png');
+  useTexture.preload('/textures/planet/398/planet_normalMap_Gaia_seed620.png');
+  useTexture.preload('/textures/planet/398/planet_specularMap_Gaia_seed620.png');
   useTexture.preload('/textures/planet/clouds.jpg');
 
   // Textures - Moons
@@ -97,9 +97,9 @@ export const SceneManager: React.FC = () => {
             position={[directPosition.x, directPosition.y, directPosition.z]}
             intensity={directIntensity}
             color={directColor}
-            castShadow
-            shadow-mapSize-width={512}
-            shadow-mapSize-height={512}
+          // castShadow
+          // shadow-mapSize-width={512}
+          // shadow-mapSize-height={512}
           />
         </>
       )}
